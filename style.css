@@ -1,4 +1,4 @@
-/* Version: #27 */
+/* Version: #30 */
 
 :root {
     --bg-color: #f0f2f5;
@@ -34,11 +34,10 @@ body {
     border-radius: 10px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     text-align: center;
+    position: relative; /* For context menu positioning */
 }
 
-header {
-    margin-bottom: 20px;
-}
+header { margin-bottom: 20px; }
 
 #controls {
     margin-bottom: 20px;
@@ -48,269 +47,127 @@ header {
     text-align: left;
 }
 
-.control-group {
-    margin-bottom: 15px;
-}
+.control-group { margin-bottom: 15px; }
+.button-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.control-group h3 { margin-top: 0; font-size: 1.1em; color: #444; }
+.divider { border: 0; height: 1px; background: #ccc; margin: 15px 0; }
 
-.button-row {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-bottom: 10px;
-}
+.settings-row { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+.setting-item { display: flex; flex-direction: column; }
+.setting-item label { font-size: 0.85em; margin-bottom: 3px; font-weight: bold; }
+.setting-item input, .setting-item select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; width: 80px; }
 
-.control-group h3 {
-    margin-top: 0;
-    font-size: 1.1em;
-    color: #444;
-}
-
-.divider {
-    border: 0;
-    height: 1px;
-    background: #ccc;
-    margin: 15px 0;
-}
-
-/* --- SETTINGS ROW (BPM etc) --- */
-.settings-row {
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-    align-items: center;
-}
-
-.setting-item {
-    display: flex;
-    flex-direction: column;
-}
-
-.setting-item label {
-    font-size: 0.85em;
-    margin-bottom: 3px;
-    font-weight: bold;
-}
-
-.setting-item input, .setting-item select {
-    padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 1em;
-    width: 80px;
-}
-
-/* --- BUTTONS --- */
 button {
-    background-color: #007bff;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    font-size: 14px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background 0.3s;
+    background-color: #007bff; color: white; border: none; padding: 10px 20px;
+    font-size: 14px; border-radius: 5px; cursor: pointer; transition: background 0.3s;
 }
-
-button:hover:not(:disabled) {
-    background-color: #0056b3;
-    opacity: 0.9;
-}
-
-button:disabled {
-    background-color: #cccccc !important;
-    cursor: not-allowed;
-    opacity: 0.7;
-}
+button:hover:not(:disabled) { background-color: #0056b3; opacity: 0.9; }
+button:disabled { background-color: #cccccc !important; cursor: not-allowed; opacity: 0.7; }
 
 #btn-record { background-color: #d9534f; }
 #btn-challenge { background-color: #4caf50; } 
+.toggle-btn { background-color: #6c757d; width: 60px; }
+.toggle-btn.on { background-color: #4caf50; }
 
-.toggle-btn {
-    background-color: #6c757d;
-    width: 60px;
-}
-.toggle-btn.on {
-    background-color: #4caf50;
-}
-
-/* --- DURATION CONTROLS --- */
-#duration-controls {
-    display: flex;
-    gap: 10px;
-    margin-top: 10px;
-    flex-wrap: wrap;
-}
-
+/* DURATION CONTROLS */
+#duration-controls { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
 .duration-btn {
-    background: #fff;
-    border: 2px solid #ccc;
-    padding: 8px 12px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-weight: bold;
-    font-size: 0.9em;
-    user-select: none;
+    background: #fff; border: 2px solid #ccc; padding: 8px 12px;
+    border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 0.9em; user-select: none;
 }
-
 .duration-btn.active {
-    background: #2196f3;
-    color: white;
-    border-color: #1976d2;
-    transform: scale(1.05);
+    background: #2196f3; color: white; border-color: #1976d2; transform: scale(1.05);
 }
+.rest-btn { background-color: #fff3cd; border-color: #ffecb5; }
+.rest-btn:hover { background-color: #ffe69c; }
 
-.rest-btn {
-    background-color: #fff3cd; 
-    border-color: #ffecb5;
+.dot-btn.active {
+    background-color: #9c27b0; border-color: #7b1fa2; color: white;
 }
-.rest-btn:hover {
-    background-color: #ffe69c;
-}
+.undo-btn { background-color: #e0e0e0; border-color: #bdbdbd; }
+.undo-btn:hover { background-color: #d6d6d6; }
 
-/* --- SHEET MUSIC (VexFlow) --- */
-#sheet-container {
-    margin-bottom: 20px;
-    text-align: left;
-}
-
+/* SHEET MUSIC */
+#sheet-container { margin-bottom: 20px; text-align: left; }
 #sheet-music-scroll {
-    width: 100%;
-    height: 300px; 
-    min-height: 150px;
-    background: #fff; 
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    resize: vertical; 
-    overflow: auto; 
-    padding: 20px; 
-    box-sizing: border-box;
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+    width: 100%; height: 300px; min-height: 150px;
+    background: #fff; border: 1px solid #ccc; border-radius: 5px;
+    resize: vertical; overflow: auto; padding: 20px;
+    box-sizing: border-box; box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
 }
+#vexflow-wrapper { display: block; width: 100%; }
 
-#vexflow-wrapper {
-    display: block;
-    width: 100%; 
-}
+/* Gjør noter klikkbare */
+#vexflow-wrapper svg .vf-stavenote { cursor: pointer; }
+#vexflow-wrapper svg .vf-stavenote:hover { opacity: 0.7; }
 
-/* --- PIANO STYLES --- */
+/* PIANO */
 #piano-container {
-    display: flex;
-    justify-content: flex-start;
-    margin-bottom: 30px;
-    overflow-x: auto; /* Tillat scrolling */
-    padding-bottom: 20px;
-    border: 1px solid #ccc;
-    background: #222;
-    
-    /* VIKTIG FOR IPAD SCROLLING */
-    -webkit-overflow-scrolling: touch; 
-    scroll-behavior: smooth; /* Mykere piltast-scroll */
+    display: flex; justify-content: flex-start; margin-bottom: 30px;
+    overflow-x: auto; padding-bottom: 20px; border: 1px solid #ccc; background: #222;
+    -webkit-overflow-scrolling: touch; scroll-behavior: smooth;
 }
-
 .piano {
-    position: relative;
-    height: var(--piano-height);
-    width: fit-content; 
-    min-width: 100%;
-    background: var(--piano-bg);
-    padding: 10px 10px 0 10px;
-    border-radius: 5px;
-    display: flex;
+    position: relative; height: var(--piano-height); width: fit-content; min-width: 100%;
+    background: var(--piano-bg); padding: 10px 10px 0 10px; border-radius: 5px; display: flex;
 }
-
 .key {
-    border-radius: 0 0 5px 5px;
-    cursor: pointer;
-    user-select: none;
-    box-sizing: border-box;
-    /* Hindrer default "markering" på mobil, men vi håndterer touch events manuelt */
+    border-radius: 0 0 5px 5px; cursor: pointer; user-select: none; box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
 }
-
 .key.white {
-    width: var(--white-key-width);
-    flex-shrink: 0;
-    background: var(--white-key-color);
-    border: 1px solid #999;
-    border-top: none;
-    height: 100%;
-    z-index: 1;
+    width: var(--white-key-width); flex-shrink: 0; background: var(--white-key-color);
+    border: 1px solid #999; border-top: none; height: 100%; z-index: 1;
 }
-
 .key.black {
-    position: absolute;
-    top: 10px;
-    height: 60%;
-    width: var(--black-key-width);
-    background: var(--black-key-color);
-    z-index: 2;
-    border-radius: 0 0 3px 3px;
+    position: absolute; top: 10px; height: 60%; width: var(--black-key-width);
+    background: var(--black-key-color); z-index: 2; border-radius: 0 0 3px 3px;
     box-shadow: 2px 2px 2px rgba(0,0,0,0.3);
 }
-
-.key.white:active, .key.white.active {
-    background: var(--active-color);
-    transform: scale(0.98);
-}
-.key.black:active, .key.black.active {
-    background: #b8860b;
-    transform: scale(0.98);
-}
-
+.key.white:active, .key.white.active { background: var(--active-color); transform: scale(0.98); }
+.key.black:active, .key.black.active { background: #b8860b; transform: scale(0.98); }
 .key.correct { background-color: var(--correct-color) !important; }
 .key.wrong { background-color: var(--wrong-color) !important; }
 .key.hint { background-color: var(--hint-color) !important; }
 .key.black.hint { background-color: #1976d2 !important; }
 
-/* --- LOGGING AREA --- */
-#logging-area {
-    text-align: left;
-    border-top: 2px solid #eee;
-    padding-top: 10px;
-}
-
+/* LOGGING */
+#logging-area { text-align: left; border-top: 2px solid #eee; padding-top: 10px; }
 #app-log {
-    background: #222;
-    color: #0f0;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 12px;
-    height: 150px;
-    overflow-y: scroll;
-    padding: 10px;
-    border-radius: 5px;
+    background: #222; color: #0f0; font-family: 'Courier New', Courier, monospace;
+    font-size: 12px; height: 150px; overflow-y: scroll; padding: 10px; border-radius: 5px;
 }
-
-.log-entry {
-    border-bottom: 1px solid #444;
-    padding: 2px 0;
-}
-.log-time {
-    color: #888;
-    margin-right: 5px;
-}
+.log-entry { border-bottom: 1px solid #444; padding: 2px 0; }
+.log-time { color: #888; margin-right: 5px; }
 
 #status-display, #note-display, #learning-status {
-    margin-top: 5px;
-    font-weight: bold;
-    font-size: 1em;
-    display: inline-block;
-    margin-right: 15px;
+    margin-top: 5px; font-weight: bold; font-size: 1em; display: inline-block; margin-right: 15px;
 }
+#piano-container::-webkit-scrollbar, #sheet-music-scroll::-webkit-scrollbar { height: 12px; width: 12px; }
+#piano-container::-webkit-scrollbar-track, #sheet-music-scroll::-webkit-scrollbar-track { background: #333; }
+#piano-container::-webkit-scrollbar-thumb, #sheet-music-scroll::-webkit-scrollbar-thumb { background: #555; border-radius: 6px; }
 
-/* Scrollbar styling */
-#piano-container::-webkit-scrollbar, #sheet-music-scroll::-webkit-scrollbar {
-    height: 12px;
-    width: 12px;
-}
-#piano-container::-webkit-scrollbar-track, #sheet-music-scroll::-webkit-scrollbar-track {
-    background: #333;
-}
-#piano-container::-webkit-scrollbar-thumb, #sheet-music-scroll::-webkit-scrollbar-thumb {
-    background: #555;
-    border-radius: 6px;
-}
+@media (max-width: 600px) { .piano { height: 180px; } }
 
-@media (max-width: 600px) {
-    .piano { height: 180px; }
+/* CONTEXT MENU */
+.context-menu {
+    position: absolute;
+    background: white;
+    border: 1px solid #ccc;
+    box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
+    border-radius: 5px;
+    padding: 10px;
+    z-index: 1000;
+    min-width: 200px;
+    text-align: center;
 }
-/* Version: #27 */
+.context-menu h4 { margin: 0 0 10px 0; font-size: 1em; color: #333; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+.menu-section { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; justify-content: center; }
+.menu-btn {
+    flex: 1 1 40%; background: #f0f2f5; color: #333; font-size: 0.8em; padding: 5px;
+}
+.menu-btn:hover { background: #e4e6e9; }
+.menu-btn.delete-btn { background: #ffebee; color: #c62828; }
+.menu-btn.delete-btn:hover { background: #ffcdd2; }
+.menu-close { background: #eee; width: 100%; margin-top: 5px; }
+/* Version: #30 */
