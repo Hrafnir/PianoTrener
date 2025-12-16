@@ -1,4 +1,4 @@
-/* Version: #5 */
+/* Version: #9 */
 
 :root {
     --bg-color: #f0f2f5;
@@ -28,7 +28,7 @@ body {
 
 .app-container {
     width: 100%;
-    max-width: 1000px; /* Økt bredde litt for bedre oversikt */
+    max-width: 1000px;
     background: white;
     padding: 20px;
     border-radius: 10px;
@@ -42,9 +42,27 @@ header {
 
 #controls {
     margin-bottom: 30px;
-    padding: 10px;
+    padding: 20px;
     background: #e9ecef;
     border-radius: 8px;
+    text-align: left; /* Bedre struktur med flere grupper */
+}
+
+.control-group {
+    margin-bottom: 10px;
+}
+
+.control-group h3 {
+    margin-top: 0;
+    font-size: 1.1em;
+    color: #444;
+}
+
+.divider {
+    border: 0;
+    height: 1px;
+    background: #ccc;
+    margin: 20px 0;
 }
 
 button {
@@ -52,34 +70,54 @@ button {
     color: white;
     border: none;
     padding: 10px 20px;
-    font-size: 16px;
+    font-size: 14px;
     border-radius: 5px;
     cursor: pointer;
     transition: background 0.3s;
+    margin-right: 10px;
+    margin-bottom: 10px;
 }
 
-button:hover {
+button:hover:not(:disabled) {
     background-color: #0056b3;
 }
 
-#status-display, #note-display {
-    margin-top: 10px;
+button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* Spesifikke farger for knapper */
+#btn-record { background-color: #d9534f; } /* Rødlig for opptak */
+#btn-record:hover:not(:disabled) { background-color: #c9302c; }
+
+#btn-play-seq { background-color: #5bc0de; } /* Blålig for play */
+#btn-play-seq:hover:not(:disabled) { background-color: #31b0d5; }
+
+#btn-challenge { background-color: #f0ad4e; } /* Oransje for spill */
+#btn-challenge:hover:not(:disabled) { background-color: #ec971f; }
+
+
+#status-display, #note-display, #learning-status {
+    margin-top: 5px;
     font-weight: bold;
-    font-size: 1.2em;
+    font-size: 1em;
+    display: inline-block;
+    margin-right: 15px;
 }
 
 /* --- PIANO STYLES --- */
 #piano-container {
     display: flex;
-    justify-content: flex-start; /* Start fra venstre */
+    justify-content: flex-start;
     margin-bottom: 30px;
-    overflow-x: auto; /* Aktiverer scrolling sideveis */
-    padding-bottom: 20px; /* Plass til scrollbar */
-    border: 1px solid #ccc; /* Ramme for å se området tydelig */
-    background: #222; /* Bakgrunn bak scroll */
+    overflow-x: auto;
+    padding-bottom: 20px;
+    border: 1px solid #ccc;
+    background: #222;
 }
 
-/* Penere scrollbar (WebKit) */
 #piano-container::-webkit-scrollbar {
     height: 12px;
 }
@@ -97,13 +135,12 @@ button:hover {
 .piano {
     position: relative;
     height: var(--piano-height);
-    /* width settes automatisk av innholdet (fit-content) */
     width: fit-content; 
     min-width: 100%;
     background: var(--piano-bg);
     padding: 10px 10px 0 10px;
     border-radius: 5px;
-    display: flex; /* Flexboks for hvite tangenter på rad */
+    display: flex;
 }
 
 .key {
@@ -111,53 +148,48 @@ button:hover {
     cursor: pointer;
     transition: background 0.05s, transform 0.05s;
     user-select: none;
-    box-sizing: border-box; /* Viktig for border */
+    box-sizing: border-box;
 }
 
 .key.white {
     width: var(--white-key-width);
-    flex-shrink: 0; /* Hindrer at tangentene krymper */
+    flex-shrink: 0;
     background: var(--white-key-color);
     border: 1px solid #999;
     border-top: none;
     height: 100%;
     z-index: 1;
-    margin: 0; /* Ingen margin mellom hvite, border fikser skillet */
-}
-
-.key.white:active, .key.white.active {
-    background: var(--active-color);
-    transform: scale(0.98);
-    box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
+    margin: 0;
 }
 
 .key.black {
     position: absolute;
-    top: 10px; /* Juster etter padding på piano-container */
+    top: 10px;
     height: 60%;
     width: var(--black-key-width);
     background: var(--black-key-color);
     z-index: 2;
     border-radius: 0 0 3px 3px;
     box-shadow: 2px 2px 2px rgba(0,0,0,0.3);
-    /* Left-posisjon settes nå via JS for fullt klaviatur */
 }
 
+/* AKTIV STATE (Klikk / Mic) */
+.key.white:active, .key.white.active {
+    background: var(--active-color);
+    transform: scale(0.98);
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
+}
 .key.black:active, .key.black.active {
-    background: #b8860b; /* Mørkere gull */
+    background: #b8860b;
     transform: scale(0.98);
 }
 
-/* Note-navn på tangentene (valgfritt, bra for læring) */
-.key.white::after {
-    content: attr(data-note);
-    position: absolute;
-    bottom: 5px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 10px;
-    color: #999;
-    pointer-events: none;
+/* FEEDBACK STATES (Læring) */
+.key.correct {
+    background-color: var(--correct-color) !important;
+}
+.key.wrong {
+    background-color: var(--wrong-color) !important;
 }
 
 /* --- LOGGING AREA --- */
@@ -192,4 +224,4 @@ button:hover {
         height: 180px;
     }
 }
-/* Version: #5 */
+/* Version: #9 */
