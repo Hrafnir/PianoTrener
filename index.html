@@ -1,4 +1,4 @@
-<!-- Version: #17 -->
+<!-- Version: #21 -->
 <!DOCTYPE html>
 <html lang="no">
 <head>
@@ -28,6 +28,20 @@
 
             <hr class="divider">
 
+            <!-- Tonelengde Kontroll (NY) -->
+            <div class="control-group">
+                <h3>Velg Tonelengde (Bruk tastatur 1, 2, 4, 8, 9)</h3>
+                <div id="duration-controls">
+                    <div class="duration-btn" data-dur="w" id="dur-1">1 Helnote</div>
+                    <div class="duration-btn" data-dur="h" id="dur-2">2 Halvnote</div>
+                    <div class="duration-btn active" data-dur="q" id="dur-4">4 Fjerdedel</div>
+                    <div class="duration-btn" data-dur="8" id="dur-8">8 Åttedel</div>
+                    <div class="duration-btn" data-dur="16" id="dur-9">9 Sekstendel</div>
+                </div>
+            </div>
+
+            <hr class="divider">
+
             <!-- Læringsmodus Kontroll -->
             <div class="control-group">
                 <h3>Læring og Øving</h3>
@@ -38,6 +52,8 @@
                     <button id="btn-play-seq" disabled>▶️ Hør Fasit</button>
                     <button id="btn-challenge" disabled>🎓 Start Øvelse</button>
                     <button id="btn-clear-sheet" style="background-color: #6c757d;">🗑️ Tøm Noter</button>
+                    <!-- Ny knapp for lagring -->
+                    <button id="btn-download" style="background-color: #009688;">💾 Lagre Noteark</button>
                 </div>
 
                 <!-- Øvingsmodus knapper (Vises kun under spill) -->
@@ -50,7 +66,7 @@
             </div>
         </section>
 
-        <!-- NY SEKSJON: Ekte Noteark -->
+        <!-- Ekte Noteark -->
         <section id="sheet-container">
             <h3>Noteark (G-Nøkkel):</h3>
             <div id="sheet-music-scroll">
@@ -60,7 +76,6 @@
         </section>
 
         <section id="piano-container">
-            <!-- Piano tangenter vil genereres dynamisk av JavaScript -->
             <div class="piano" id="piano">
                 <!-- Tangentene genereres her ved oppstart -->
             </div>
@@ -68,13 +83,11 @@
 
         <section id="logging-area">
             <h3>System Logg:</h3>
-            <div id="app-log">
-                <!-- Logger skrives her -->
-            </div>
+            <div id="app-log"></div>
         </section>
     </div>
 
     <script src="script.js"></script>
 </body>
 </html>
-<!-- Version: #17 -->
+<!-- Version: #21 -->
