@@ -1,10 +1,12 @@
-<!-- Version: #11 -->
+<!-- Version: #14 -->
 <!DOCTYPE html>
 <html lang="no">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Piano Lærer for Barn</title>
+    <!-- VexFlow bibliotek for ekte noter -->
+    <script src="https://unpkg.com/vexflow/releases/vexflow-min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,7 +14,7 @@
     <div class="app-container">
         <header>
             <h1>Piano Lærer 🎹</h1>
-            <p>Spill, lær, og se notene dine bli skrevet ned!</p>
+            <p>Spill, lær, og se ekte noter!</p>
         </header>
 
         <section id="controls">
@@ -28,26 +30,32 @@
 
             <!-- Læringsmodus Kontroll -->
             <div class="control-group">
-                <h3>Læring og Transkripsjon</h3>
-                <div class="button-row">
-                    <button id="btn-record">⏺ Start Opptak (Simon)</button>
-                    <button id="btn-play-seq" disabled>▶️ Spill Fasit</button>
-                    <button id="btn-challenge" disabled>🎮 Prøv Selv!</button>
-                    <!-- Ny knapp for å tømme notearket -->
-                    <button id="btn-clear-sheet" style="background-color: #6c757d;">🗑️ Tøm Noteark</button>
+                <h3>Læring og Øving</h3>
+                
+                <!-- Hovedmeny knapper -->
+                <div id="main-controls" class="button-row">
+                    <button id="btn-record">⏺ Start Opptak</button>
+                    <button id="btn-play-seq" disabled>▶️ Hør Fasit</button>
+                    <button id="btn-challenge" disabled>🎓 Start Øvelse</button>
+                    <button id="btn-clear-sheet" style="background-color: #6c757d;">🗑️ Tøm Noter</button>
+                </div>
+
+                <!-- Øvingsmodus knapper (Vises kun under spill) -->
+                <div id="game-controls" class="button-row" style="display: none;">
+                    <button id="btn-restart-game" style="background-color: #ff9800;">🔄 Start På Nytt</button>
+                    <button id="btn-stop-game" style="background-color: #f44336;">❌ Avslutt Øving</button>
                 </div>
                 
                 <div id="learning-status">Status: Ventet på opptak...</div>
             </div>
         </section>
 
-        <!-- NY SEKSJON: Noteark / Transkripsjon -->
+        <!-- NY SEKSJON: Ekte Noteark -->
         <section id="sheet-container">
-            <h3>Ditt Noteark:</h3>
+            <h3>Noteark (G-Nøkkel):</h3>
             <div id="sheet-music-scroll">
-                <div id="sheet-music-content">
-                    <!-- Noteblokker (transkripsjon) genereres her av JS -->
-                </div>
+                <!-- Her tegner VexFlow notene -->
+                <div id="vexflow-wrapper"></div>
             </div>
         </section>
 
@@ -69,4 +77,4 @@
     <script src="script.js"></script>
 </body>
 </html>
-<!-- Version: #11 -->
+<!-- Version: #14 -->
