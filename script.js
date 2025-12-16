@@ -1,4 +1,4 @@
-/* Version: #18 */
+/* Version: #20 */
 
 // === KONFIGURASJON ===
 const NOTE_STRINGS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -49,6 +49,7 @@ const pianoInner = document.getElementById('piano');
 
 // Sheet Music Elements
 const vexWrapper = document.getElementById('vexflow-wrapper');
+const sheetScroll = document.getElementById('sheet-music-scroll'); // Referanse for bredde
 const btnClearSheet = document.getElementById('btn-clear-sheet');
 
 // Game Controls
@@ -69,7 +70,7 @@ window.onload = () => {
         log("FEIL: VexFlow biblioteket ble ikke lastet riktig.");
         return;
     }
-    VF = Vex.Flow; // Initialiser VexFlow snarvei her
+    VF = Vex.Flow; 
 
     generatePiano();
     
@@ -86,6 +87,7 @@ window.onload = () => {
 
 window.onresize = () => {
     pianoContainerWidth = pianoContainer.clientWidth;
+    renderSheetMusic(); // Tegn noter på nytt ved endring av vindusstørrelse
 };
 
 // === LOGGING FUNKSJON ===
@@ -189,27 +191,36 @@ function updateScrollLoop() {
 // === VEXFLOW SHEET MUSIC RENDERER ===
 
 function renderSheetMusic() {
-    if (!VF) return; // Sikkerhetsnett hvis VexFlow ikke lastet
+    if (!VF) return; 
 
     vexWrapper.innerHTML = '';
+    
+    // Hent tilgjengelig bredde fra containeren
+    const containerWidth = sheetScroll.clientWidth; 
+    const noteWidth = 40; 
+    
+    // Beregn nødvendig bredde basert på antall noter
+    const requiredWidth = recordedSequence.length * noteWidth + 50;
+    
+    // Bruk den største av container-bredden eller nødvendig bredde
+    // (Sikrer at notelinjene alltid fyller hele boksen)
+    const totalWidth = Math.max(containerWidth - 20, requiredWidth); // -20 for litt padding
 
+    const height = 220; // Matcher CSS
+    const staveY = 60;  // Plasser notelinjene (top-line) litt ned for å sentrere
+
+    const renderer = new VF.Renderer(vexWrapper, VF.Renderer.Backends.SVG);
+    renderer.resize(totalWidth, height);
+    const context = renderer.getContext();
+
+    // Tegn tom stave hvis ingen noter
     if (recordedSequence.length === 0) {
-        const renderer = new VF.Renderer(vexWrapper, VF.Renderer.Backends.SVG);
-        renderer.resize(500, 150);
-        const context = renderer.getContext();
-        const stave = new VF.Stave(10, 40, 400);
+        const stave = new VF.Stave(10, staveY, totalWidth - 20);
         stave.addClef("treble").setContext(context).draw();
         return;
     }
 
-    const noteWidth = 40; 
-    const totalWidth = Math.max(500, recordedSequence.length * noteWidth + 50);
-    
-    const renderer = new VF.Renderer(vexWrapper, VF.Renderer.Backends.SVG);
-    renderer.resize(totalWidth, 150);
-    const context = renderer.getContext();
-
-    const stave = new VF.Stave(10, 40, totalWidth - 20);
+    const stave = new VF.Stave(10, staveY, totalWidth - 20);
     stave.addClef("treble");
     stave.setContext(context).draw();
 
@@ -241,13 +252,10 @@ function renderSheetMusic() {
         // Fargelegging
         if (isChallenging) {
             if (index < challengeIndex) {
-                // Riktig (Grønn)
                 staveNote.setStyle({fillStyle: "#4caf50", strokeStyle: "#4caf50"});
             } else if (index === challengeIndex) {
-                // Aktiv (Blå)
                 staveNote.setStyle({fillStyle: "#2196f3", strokeStyle: "#2196f3"});
             } else {
-                // Fremtid (Svart)
                 staveNote.setStyle({fillStyle: "black", strokeStyle: "black"});
             }
         }
@@ -256,15 +264,21 @@ function renderSheetMusic() {
     });
 
     const numBeats = notes.length;
+    // Vi setter beat_value til 4 og num_beats til antall noter. 
+    // Dette "jukser" litt for å få plass til alle noter i en "takt" uten taktstreker.
     const voice = new VF.Voice({num_beats: numBeats, beat_value: 4});
     voice.addTickables(notes);
 
+    // Formatér (fordel notene utover bredden)
+    // Vi bruker nesten hele bredden tilgjengelig
     new VF.Formatter().joinVoices([voice]).format([voice], totalWidth - 50);
 
     voice.draw(context, stave);
     
-    const scrollArea = document.getElementById('sheet-music-scroll');
-    scrollArea.scrollLeft = scrollArea.scrollWidth;
+    // Auto-scroll til høyre hvis notene går utenfor skjermen
+    if (requiredWidth > containerWidth) {
+        sheetScroll.scrollLeft = sheetScroll.scrollWidth;
+    }
 }
 
 
@@ -343,7 +357,6 @@ function checkPlayerInput(noteId) {
 
 // === BUTTON EVENTS ===
 
-// --- Main Menu ---
 btnRecord.addEventListener('click', () => {
     if (isRecording) {
         isRecording = false;
@@ -401,7 +414,6 @@ btnClearSheet.addEventListener('click', () => {
     updateButtonStates();
     log("Noter slettet.");
 });
-
 
 // === MODE SWITCHING HELPERS ===
 
@@ -682,4 +694,4 @@ function noteFromPitch(frequency) {
     return Math.round(noteNum) + 69;
 }
 
-/* Version: #18 */
+/* Version: #20 */
