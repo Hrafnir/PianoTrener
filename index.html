@@ -1,0 +1,58 @@
+<!-- Version: #2 -->
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Piano Lærer for Barn</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="app-container">
+        <header>
+            <h1>Piano Lærer 🎹</h1>
+            <p>Spill en tone eller syng, og se den på pianoet!</p>
+        </header>
+
+        <section id="controls">
+            <button id="btn-start-mic">Start Mikrofon / Lyd</button>
+            <div id="status-display">Status: Klar...</div>
+            <div id="note-display">Note: --</div>
+        </section>
+
+        <section id="piano-container">
+            <!-- Piano tangenter vil genereres her eller styles her -->
+            <div class="piano" id="piano">
+                <!-- Vi fyller inn tangenter i HTML for enkel styling i første omgang, 
+                     eller lar JS generere dem. For nå lager vi en placeholder struktur 
+                     slik at CSS har noe å jobbe med i neste steg. -->
+                <!-- C4 til C5 (en oktav) som start -->
+                <div class="key white" data-note="C4" id="key-C4"></div>
+                <div class="key black" data-note="C#4" id="key-C#4"></div>
+                <div class="key white" data-note="D4" id="key-D4"></div>
+                <div class="key black" data-note="D#4" id="key-D#4"></div>
+                <div class="key white" data-note="E4" id="key-E4"></div>
+                <div class="key white" data-note="F4" id="key-F4"></div>
+                <div class="key black" data-note="F#4" id="key-F#4"></div>
+                <div class="key white" data-note="G4" id="key-G4"></div>
+                <div class="key black" data-note="G#4" id="key-G#4"></div>
+                <div class="key white" data-note="A4" id="key-A4"></div>
+                <div class="key black" data-note="A#4" id="key-A#4"></div>
+                <div class="key white" data-note="B4" id="key-B4"></div>
+                <div class="key white" data-note="C5" id="key-C5"></div>
+            </div>
+        </section>
+
+        <section id="logging-area">
+            <h3>System Logg:</h3>
+            <div id="app-log">
+                <!-- Logger skrives her -->
+            </div>
+        </section>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+<!-- Version: #2 -->
