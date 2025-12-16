@@ -1,4 +1,4 @@
-/* Version: #31 */
+/* Version: #32 */
 
 // === KONFIGURASJON ===
 const NOTE_STRINGS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -22,7 +22,6 @@ let currentActiveKey = null;
 const activeOscillators = new Map(); 
 
 // MUSIC DATA
-// Format: { note: "C4", duration: "q", type: "n"|"r", dotted: boolean }
 let recordedSequence = []; 
 let currentDuration = "q"; 
 let isDotted = false;
@@ -31,7 +30,7 @@ let timeSignature = "4/4";
 let metronomeEnabled = false;
 
 // INTERACTION STATE
-let selectedNoteIndex = -1; // For context menu
+let selectedNoteIndex = -1;
 
 // GAME STATE
 let isRecording = false;
@@ -93,7 +92,6 @@ window.onload = () => {
     renderSheetMusic();
     updateButtonStates();
     
-    // Close context menu on click elsewhere
     document.addEventListener('click', (e) => {
         if (!contextMenu.contains(e.target) && !e.target.closest('.vf-stavenote')) {
             closeContextMenu();
@@ -112,7 +110,6 @@ window.onresize = () => {
 window.addEventListener('keydown', (e) => {
     if(e.target.tagName === 'INPUT') return; 
 
-    // Scroll
     if (e.key === 'ArrowLeft') {
         e.preventDefault();
         targetScrollPos -= 100;
@@ -124,7 +121,6 @@ window.addEventListener('keydown', (e) => {
         if(targetScrollPos > max) targetScrollPos = max;
     }
 
-    // Commands
     switch(e.key.toLowerCase()) {
         case '1': setDuration('w', 'dur-1'); break;
         case '2': setDuration('h', 'dur-2'); break;
@@ -141,17 +137,15 @@ function setDuration(dur, elementId) {
     currentDuration = dur;
     document.querySelectorAll('.duration-btn').forEach(btn => btn.classList.remove('active'));
     document.getElementById(elementId).classList.add('active');
-    // Behold dot active state visuelt
     if(isDotted) btnToggleDot.classList.add('active');
 }
-// UI Click binders
+
 document.getElementById('dur-1').onclick = () => setDuration('w', 'dur-1');
 document.getElementById('dur-2').onclick = () => setDuration('h', 'dur-2');
 document.getElementById('dur-4').onclick = () => setDuration('q', 'dur-4');
 document.getElementById('dur-8').onclick = () => setDuration('8', 'dur-8');
 document.getElementById('dur-9').onclick = () => setDuration('16', 'dur-9');
 
-// Toggle Dot
 btnToggleDot.addEventListener('click', toggleDot);
 function toggleDot() {
     isDotted = !isDotted;
@@ -159,7 +153,6 @@ function toggleDot() {
     log(`Punktering: ${isDotted ? "PÅ" : "AV"}`);
 }
 
-// Undo
 btnUndo.addEventListener('click', undoLastNote);
 function undoLastNote() {
     if (recordedSequence.length > 0) {
@@ -170,7 +163,6 @@ function undoLastNote() {
     }
 }
 
-// Add Rest
 btnAddRest.addEventListener('click', addRest);
 function addRest() {
     if (!isRecording) {
@@ -188,7 +180,6 @@ function addRest() {
     updateButtonStates();
 }
 
-// Settings
 bpmInput.addEventListener('change', (e) => {
     bpm = parseInt(e.target.value);
     if(bpm < 40) bpm = 40; if(bpm > 240) bpm = 240;
@@ -207,7 +198,11 @@ btnToggleMetronome.addEventListener('click', () => {
 // === VEXFLOW RENDERER & INTERACTION ===
 function renderSheetMusic() {
     if (!VF) return; 
-    vexWrapper.innerHTML = '';
+    
+    // Tøm wrapper helt for å unngå duplikater
+    while (vexWrapper.firstChild) {
+        vexWrapper.removeChild(vexWrapper.firstChild);
+    }
     
     const availableWidth = vexWrapper.clientWidth - 20; 
     const staveX = 10;
@@ -218,27 +213,9 @@ function renderSheetMusic() {
     renderer.resize(availableWidth, 500); 
     const context = renderer.getContext();
 
-    // Parse Time Sig
     const tsParts = timeSignature.split('/');
     const beatsPerMeasure = parseInt(tsParts[0]);
-    const beatUnit = parseInt(tsParts[1]); // e.g. 4
-
-    // Helper: Beat Value calculation
-    const getBeatValue = (item) => {
-        let val = 0;
-        switch(item.duration) {
-            case 'w': val = 4; break;
-            case 'h': val = 2; break;
-            case 'q': val = 1; break;
-            case '8': val = 0.5; break;
-            case '16': val = 0.25; break;
-            default: val = 1;
-        }
-        if (item.dotted) val *= 1.5;
-        // Juster basert på beat unit (hvis 4/4 er base)
-        // VexFlow regner beats relativt til quarter notes (q=1) for standardformatter
-        return val;
-    };
+    const beatUnit = parseInt(tsParts[1]); 
 
     // 1. Build StaveNotes
     const allNotes = recordedSequence.map((item, index) => {
@@ -259,7 +236,6 @@ function renderSheetMusic() {
             duration: item.duration + (item.type === 'r' ? "r" : ""), 
             auto_stem: true 
         };
-        // Håndter dots i duration string for rendering (VexFlow krever addDot, men duration string hjelper også)
         if (item.dotted) noteStruct.dots = 1;
 
         const staveNote = new VF.StaveNote(noteStruct);
@@ -271,9 +247,19 @@ function renderSheetMusic() {
             else if (index === challengeIndex) staveNote.setStyle({fillStyle: "#2196f3", strokeStyle: "#2196f3"});
         }
         
-        // Lagre index på elementet for klikk-gjenkjenning senere
-        // VexFlow SVG har ikke direkte data-attributter, men vi mapper via rekkefølge
-        return { note: staveNote, beats: getBeatValue(item) };
+        // Beregn beats for grouping
+        let val = 0;
+        switch(item.duration) {
+            case 'w': val = 4; break;
+            case 'h': val = 2; break;
+            case 'q': val = 1; break;
+            case '8': val = 0.5; break;
+            case '16': val = 0.25; break;
+            default: val = 1;
+        }
+        if (item.dotted) val *= 1.5;
+        
+        return { note: staveNote, beats: val };
     });
 
     // 2. Measure Grouping
@@ -282,7 +268,7 @@ function renderSheetMusic() {
     let currentBeats = 0;
 
     allNotes.forEach((obj) => {
-        if (currentBeats + obj.beats > beatsPerMeasure + 0.01) { // 0.01 float tolerance
+        if (currentBeats + obj.beats > beatsPerMeasure + 0.01) {
             measures.push(currentMeasure);
             currentMeasure = [];
             currentBeats = 0;
@@ -293,7 +279,6 @@ function renderSheetMusic() {
     if (currentMeasure.length > 0) measures.push(currentMeasure);
 
     // 3. Draw
-    let currentLineY = staveY;
     const measureWidth = 250; 
     const measuresPerLine = Math.floor(availableWidth / measureWidth);
     let measureIndex = 0;
@@ -312,7 +297,6 @@ function renderSheetMusic() {
         const notesInMeasure = measures[measureIndex];
         const beams = VF.Beam.generateBeams(notesInMeasure);
         
-        // Voice configuration
         const voice = new VF.Voice({num_beats: beatsPerMeasure, beat_value: beatUnit});
         voice.setStrict(false); 
         voice.addTickables(notesInMeasure);
@@ -327,15 +311,11 @@ function renderSheetMusic() {
     }
 
     // 4. ATTACH CLICK LISTENERS
-    // Vi må finne alle SVG-gruppene som er noter.
-    // VexFlow rendrer dem i rekkefølge (første note først i DOM, etc).
-    // Vi velger alle elementer med class "vf-stavenote".
     const renderedNotes = vexWrapper.querySelectorAll('.vf-stavenote');
     renderedNotes.forEach((el, index) => {
         if (index < recordedSequence.length) {
-            // Legg til click event
             el.addEventListener('click', (e) => {
-                e.stopPropagation(); // Hindre document click
+                e.stopPropagation(); 
                 openContextMenu(index, e);
             });
         }
@@ -346,16 +326,12 @@ function renderSheetMusic() {
 function openContextMenu(index, event) {
     selectedNoteIndex = index;
     const noteData = recordedSequence[index];
-    
-    // Posisjoner menyen ved musen
     const x = event.pageX;
     const y = event.pageY;
-    
     contextMenu.style.left = `${x}px`;
     contextMenu.style.top = `${y}px`;
     contextMenu.style.display = 'block';
-    
-    log(`Valgte note ${index + 1}: ${noteData.note}`);
+    log(`Valgte note ${index + 1}`);
 }
 
 function closeContextMenu() {
@@ -363,10 +339,8 @@ function closeContextMenu() {
     selectedNoteIndex = -1;
 }
 
-// Funksjon som kalles fra HTML-knappene i menyen
 window.modifySelectedNote = function(action, value) {
     if (selectedNoteIndex === -1) return;
-    
     const note = recordedSequence[selectedNoteIndex];
 
     if (action === 'duration') {
@@ -375,17 +349,12 @@ window.modifySelectedNote = function(action, value) {
         note.dotted = !note.dotted;
     } else if (action === 'type') {
         note.type = (note.type === 'n') ? 'r' : 'n';
-        // Hvis pause, sett note til default b/4 for visning
         if (note.type === 'r') note.note = "b/4";
-        // Hvis tilbake til note, må vi ha en pitch. 
-        // Vi har mistet opprinnelig pitch hvis vi bare bytter type.
-        // For enkelhets skyld setter vi C4 hvis den var pause.
         if (note.type === 'n' && note.note === "b/4") note.note = "C4"; 
     } else if (action === 'delete') {
         recordedSequence.splice(selectedNoteIndex, 1);
-        selectedNoteIndex = -1; // Reset selection
+        selectedNoteIndex = -1; 
     }
-
     renderSheetMusic();
     closeContextMenu();
 };
@@ -402,7 +371,7 @@ function handleInput(noteId, freq, isClick) {
             type: 'n',
             dotted: isDotted
         });
-        log(`Tatt opp: ${noteId} ${isDotted?'.':''}`);
+        log(`Tatt opp: ${noteId}`);
         renderSheetMusic();
         updateButtonStates();
     } else if (isChallenging) {
@@ -410,7 +379,6 @@ function handleInput(noteId, freq, isClick) {
     }
 }
 
-// === OTHER LOGIC (Playback, Piano Gen, etc) Unchanged mostly ===
 function checkPlayerInput(noteId) {
     if (challengeIndex >= recordedSequence.length) return;
     const target = recordedSequence[challengeIndex];
@@ -435,11 +403,6 @@ function checkPlayerInput(noteId) {
     }
 }
 
-// ... (Resten av hjelpefunksjonene: audioContext, piano gen, scroll, playback beholdes som før) ...
-// For å spare plass i svaret, inkluderer jeg kjernefunksjonene som er endret over.
-// Men her er resten av koden som trengs for at filen skal være KOMPLETT.
-
-// ... COPY OF EXISTING HELPERS ...
 function ensureAudioContext() {
     if (!audioContext) { audioContext = new (window.AudioContext || window.webkitAudioContext)(); }
     if (audioContext.state === 'suspended') { audioContext.resume(); }
@@ -527,7 +490,47 @@ btnChallenge.addEventListener('click', () => { if(!recordedSequence.length) retu
 btnStopGame.addEventListener('click', () => { isChallenging=false; mainControls.style.display='flex'; gameControls.style.display='none'; clearHints(); renderSheetMusic(); });
 btnClearSheet.addEventListener('click', ()=>{ recordedSequence=[]; renderSheetMusic(); updateButtonStates(); });
 btnRestartGame.addEventListener('click', ()=>{ challengeIndex=0; renderSheetMusic(); showNextHint(); });
-btnDownload.addEventListener('click', () => { if(!recordedSequence.length) return; const blob = new Blob([vexWrapper.innerHTML], {type:"image/svg+xml;charset=utf-8"}); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download="noter.svg"; a.click(); });
+
+// !!! KORRIGERT DOWNLOAD FUNKSJON !!!
+btnDownload.addEventListener('click', () => {
+    if (!recordedSequence.length) {
+        alert("Ingen noter å lagre!");
+        return;
+    }
+
+    // 1. Hent SVG elementet direkte fra wrapper
+    const svgElement = vexWrapper.querySelector('svg');
+    if (!svgElement) return;
+
+    // 2. Sørg for at namespace attributter er satt (viktig for standalone filer)
+    if (!svgElement.hasAttribute("xmlns")) {
+        svgElement.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    }
+    if (!svgElement.hasAttribute("xmlns:xlink")) {
+        svgElement.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+    }
+
+    // 3. Serialiser til streng
+    const serializer = new XMLSerializer();
+    let svgString = serializer.serializeToString(svgElement);
+
+    // 4. Legg til XML header for validitet
+    svgString = '<?xml version="1.0" standalone="no"?>\r\n' + svgString;
+
+    // 5. Opprett Blob og last ned
+    const blob = new Blob([svgString], {type: "image/svg+xml;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    
+    const downloadLink = document.createElement("a");
+    downloadLink.href = url;
+    downloadLink.download = "noter.svg";
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    
+    log("Lastet ned SVG.");
+});
+
 function updateButtonStates() { btnRecord.innerText = isRecording ? "⏹ Stopp" : "⏺ Opptak"; btnRecord.classList.toggle('active', isRecording); btnPlaySeq.disabled = isRecording || !recordedSequence.length; btnChallenge.disabled = isRecording || !recordedSequence.length; btnDownload.disabled = !recordedSequence.length; }
 function clearHints() { document.querySelectorAll('.key').forEach(k=>k.classList.remove('hint')); }
 function showNextHint() { clearHints(); if(challengeIndex<recordedSequence.length && recordedSequence[challengeIndex].type !== 'r') { const k = document.getElementById(`key-${recordedSequence[challengeIndex].note}`); if(k) k.classList.add('hint'); } }
@@ -538,4 +541,4 @@ function autoCorrelate(buf, sr) { let rms=0; for(let i=0;i<buf.length;i++) rms+=
 function noteFromPitch(f) { return Math.round(12*(Math.log(f/440)/Math.log(2)))+69; }
 function log(message) { const time = new Date().toLocaleTimeString(); const entry = document.createElement('div'); entry.className = 'log-entry'; entry.innerHTML = `<span class="log-time">[${time}]</span> ${message}`; logContainer.appendChild(entry); logContainer.scrollTop = logContainer.scrollHeight; }
 
-/* Version: #31 */
+/* Version: #32 */
