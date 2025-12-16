@@ -1,11 +1,10 @@
-<!-- Version: #24 -->
+<!-- Version: #29 -->
 <!DOCTYPE html>
 <html lang="no">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Piano Lærer - Pro</title>
-    <!-- VexFlow bibliotek (Stabil versjon 3.0.9) -->
     <script src="https://unpkg.com/vexflow@3.0.9/releases/vexflow-min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -18,7 +17,7 @@
         </header>
 
         <section id="controls">
-            <!-- Mikrofon Kontroll -->
+            <!-- Mikrofon -->
             <div class="control-group">
                 <h3>Fri Modus / Mikrofon</h3>
                 <button id="btn-start-mic">Start Mikrofon</button>
@@ -28,7 +27,7 @@
 
             <hr class="divider">
 
-            <!-- Musikk Kontroller (Ny) -->
+            <!-- Musikkinnstillinger -->
             <div class="control-group">
                 <h3>Musikkinnstillinger</h3>
                 <div class="settings-row">
@@ -52,17 +51,20 @@
                 </div>
             </div>
 
-            <!-- Tonelengde Kontroll -->
+            <!-- Tonelengde & Redigering -->
             <div class="control-group">
-                <h3>Noteverdi & Pause (Tastatur: 1, 2, 4, 8, P)</h3>
+                <h3>Noteverdi (1-9), Punktum (.), Angre (Z), Pause (P)</h3>
                 <div id="duration-controls">
                     <div class="duration-btn" data-dur="w" id="dur-1">1 Hel</div>
                     <div class="duration-btn" data-dur="h" id="dur-2">2 Halv</div>
                     <div class="duration-btn active" data-dur="q" id="dur-4">4 Fjerd.</div>
-                    <div class="duration-btn" data-dur="8" id="dur-8">8 Åttedel</div>
+                    <div class="duration-btn" data-dur="8" id="dur-8">8 Åtte.</div>
                     <div class="duration-btn" data-dur="16" id="dur-9">16-del</div>
-                    <!-- Pauseknapp -->
-                    <div class="duration-btn rest-btn" id="btn-add-rest">⏸ Pause (P)</div>
+                    
+                    <!-- Nye Knapper -->
+                    <div class="duration-btn dot-btn" id="btn-toggle-dot">. Punktert</div>
+                    <div class="duration-btn rest-btn" id="btn-add-rest">⏸ Pause</div>
+                    <div class="duration-btn undo-btn" id="btn-undo">↩ Angre</div>
                 </div>
             </div>
 
@@ -78,7 +80,6 @@
                     <button id="btn-download" style="background-color: #009688;">💾 Lagre</button>
                 </div>
 
-                <!-- Øvingsmodus knapper -->
                 <div id="game-controls" class="button-row" style="display: none;">
                     <button id="btn-restart-game" style="background-color: #ff9800;">🔄 Start På Nytt</button>
                     <button id="btn-stop-game" style="background-color: #f44336;">❌ Avslutt Øving</button>
@@ -88,18 +89,16 @@
             </div>
         </section>
 
-        <!-- Ekte Noteark -->
+        <!-- Noteark -->
         <section id="sheet-container">
-            <h3>Noteark (Juster størrelsen i hjørnet):</h3>
+            <h3>Noteark (Klikk på en note for å endre den):</h3>
             <div id="sheet-music-scroll">
                 <div id="vexflow-wrapper"></div>
             </div>
         </section>
 
         <section id="piano-container">
-            <div class="piano" id="piano">
-                <!-- Tangenter -->
-            </div>
+            <div class="piano" id="piano"></div>
         </section>
 
         <section id="logging-area">
@@ -108,7 +107,24 @@
         </section>
     </div>
 
+    <!-- CONTEXT MENU (Skjult dropdown) -->
+    <div id="note-context-menu" class="context-menu" style="display: none;">
+        <h4>Rediger Note</h4>
+        <div class="menu-section">
+            <button class="menu-btn" onclick="modifySelectedNote('duration', 'w')">Helnote</button>
+            <button class="menu-btn" onclick="modifySelectedNote('duration', 'h')">Halvnote</button>
+            <button class="menu-btn" onclick="modifySelectedNote('duration', 'q')">Fjerdedel</button>
+            <button class="menu-btn" onclick="modifySelectedNote('duration', '8')">Åttedel</button>
+        </div>
+        <div class="menu-section">
+            <button class="menu-btn" onclick="modifySelectedNote('dot')">Av/På Punktum</button>
+            <button class="menu-btn" onclick="modifySelectedNote('type')">Bytt Note/Pause</button>
+            <button class="menu-btn delete-btn" onclick="modifySelectedNote('delete')">Slett Note</button>
+        </div>
+        <button class="menu-close" onclick="closeContextMenu()">Lukk</button>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
-<!-- Version: #24 -->
+<!-- Version: #29 -->
