@@ -1,4 +1,4 @@
-/* Version: #32 */
+/* Version: #33 */
 
 // === KONFIGURASJON ===
 const NOTE_STRINGS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -199,7 +199,6 @@ btnToggleMetronome.addEventListener('click', () => {
 function renderSheetMusic() {
     if (!VF) return; 
     
-    // Tøm wrapper helt for å unngå duplikater
     while (vexWrapper.firstChild) {
         vexWrapper.removeChild(vexWrapper.firstChild);
     }
@@ -247,7 +246,6 @@ function renderSheetMusic() {
             else if (index === challengeIndex) staveNote.setStyle({fillStyle: "#2196f3", strokeStyle: "#2196f3"});
         }
         
-        // Beregn beats for grouping
         let val = 0;
         switch(item.duration) {
             case 'w': val = 4; break;
@@ -294,6 +292,10 @@ function renderSheetMusic() {
         }
         stave.setContext(context).draw();
         
+        // --- FIX FOR SPACING (Luft rundt notene) ---
+        // 1. Skyv startpunktet for notene mot høyre (15px padding)
+        stave.setNoteStartX(stave.getNoteStartX() + 15);
+        
         const notesInMeasure = measures[measureIndex];
         const beams = VF.Beam.generateBeams(notesInMeasure);
         
@@ -301,7 +303,8 @@ function renderSheetMusic() {
         voice.setStrict(false); 
         voice.addTickables(notesInMeasure);
         
-        new VF.Formatter().joinVoices([voice]).format([voice], measureWidth - 20);
+        // 2. Reduser bredden formateren bruker, så vi ikke treffer høyre kant (-50px)
+        new VF.Formatter().joinVoices([voice]).format([voice], measureWidth - 50);
         
         voice.draw(context, stave);
         beams.forEach(b => b.setContext(context).draw());
@@ -490,44 +493,17 @@ btnChallenge.addEventListener('click', () => { if(!recordedSequence.length) retu
 btnStopGame.addEventListener('click', () => { isChallenging=false; mainControls.style.display='flex'; gameControls.style.display='none'; clearHints(); renderSheetMusic(); });
 btnClearSheet.addEventListener('click', ()=>{ recordedSequence=[]; renderSheetMusic(); updateButtonStates(); });
 btnRestartGame.addEventListener('click', ()=>{ challengeIndex=0; renderSheetMusic(); showNextHint(); });
-
-// !!! KORRIGERT DOWNLOAD FUNKSJON !!!
 btnDownload.addEventListener('click', () => {
-    if (!recordedSequence.length) {
-        alert("Ingen noter å lagre!");
-        return;
-    }
-
-    // 1. Hent SVG elementet direkte fra wrapper
-    const svgElement = vexWrapper.querySelector('svg');
-    if (!svgElement) return;
-
-    // 2. Sørg for at namespace attributter er satt (viktig for standalone filer)
-    if (!svgElement.hasAttribute("xmlns")) {
-        svgElement.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-    }
-    if (!svgElement.hasAttribute("xmlns:xlink")) {
-        svgElement.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
-    }
-
-    // 3. Serialiser til streng
-    const serializer = new XMLSerializer();
-    let svgString = serializer.serializeToString(svgElement);
-
-    // 4. Legg til XML header for validitet
+    if (!recordedSequence.length) { alert("Ingen noter å lagre!"); return; }
+    const svgElement = vexWrapper.querySelector('svg'); if (!svgElement) return;
+    if (!svgElement.hasAttribute("xmlns")) { svgElement.setAttribute("xmlns", "http://www.w3.org/2000/svg"); }
+    if (!svgElement.hasAttribute("xmlns:xlink")) { svgElement.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink"); }
+    const serializer = new XMLSerializer(); let svgString = serializer.serializeToString(svgElement);
     svgString = '<?xml version="1.0" standalone="no"?>\r\n' + svgString;
-
-    // 5. Opprett Blob og last ned
     const blob = new Blob([svgString], {type: "image/svg+xml;charset=utf-8"});
     const url = URL.createObjectURL(blob);
-    
-    const downloadLink = document.createElement("a");
-    downloadLink.href = url;
-    downloadLink.download = "noter.svg";
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
-    
+    const downloadLink = document.createElement("a"); downloadLink.href = url; downloadLink.download = "noter.svg";
+    document.body.appendChild(downloadLink); downloadLink.click(); document.body.removeChild(downloadLink);
     log("Lastet ned SVG.");
 });
 
@@ -541,4 +517,4 @@ function autoCorrelate(buf, sr) { let rms=0; for(let i=0;i<buf.length;i++) rms+=
 function noteFromPitch(f) { return Math.round(12*(Math.log(f/440)/Math.log(2)))+69; }
 function log(message) { const time = new Date().toLocaleTimeString(); const entry = document.createElement('div'); entry.className = 'log-entry'; entry.innerHTML = `<span class="log-time">[${time}]</span> ${message}`; logContainer.appendChild(entry); logContainer.scrollTop = logContainer.scrollHeight; }
 
-/* Version: #32 */
+/* Version: #33 */
