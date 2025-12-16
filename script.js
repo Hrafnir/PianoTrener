@@ -1,11 +1,15 @@
-/* Version: #10 */
+/* Version: #13 */
 
 // === KONFIGURASJON ===
 const NOTE_STRINGS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-const MIN_VOLUME_THRESHOLD = 0.02; // Litt høyere for å unngå bakgrunnsstøy
+const MIN_VOLUME_THRESHOLD = 0.02; 
 const WHITE_KEY_WIDTH = 40; 
 const BLACK_KEY_WIDTH = 24; 
-const MIC_STABILITY_THRESHOLD = 5; // Hvor mange frames samme note må holdes for å registreres via mic
+const MIC_STABILITY_THRESHOLD = 5; 
+
+// Scroll config
+const SCROLL_SMOOTHING = 0.05; // Lavere tall = tregere/mykere bevegelse (0.01 - 0.1)
+const SCROLL_TRIGGER_MARGIN = 150; // Piksler fra kanten før vi begynner å scrolle
 
 // === GLOBALE VARIABLER ===
 let audioContext = null;
@@ -18,24 +22,36 @@ let buf = new Float32Array(buflen);
 let currentActiveKey = null; 
 const activeOscillators = new Map(); 
 
-// === STATE VARIABLES FOR GAME/LEARNING ===
+// Variables for Transcription
+const activeNoteStartTimes = new Map(); // Holder styr på når hver note startet { noteId: timestamp }
+
+// Variables for Game/Learning
 let recordedSequence = [];
 let isRecording = false;
 let isChallenging = false;
 let challengeIndex = 0;
-let isPlayingSequence = false; // Når datamaskinen spiller fasit
+let isPlayingSequence = false; 
 
-// Variabler for mic-stabilitet
+// Variables for Mic Stability
 let micPendingNote = null;
 let micStableFrames = 0;
-let lastRegisteredNote = null; // Siste note sendt til spill-logikken
+let lastRegisteredNote = null; 
+
+// Variables for Smart Scroll
+let targetScrollPos = 0;
+let pianoContainerWidth = 0;
 
 // === DOM ELEMENTER ===
 const btnStartMic = document.getElementById('btn-start-mic');
 const displayStatus = document.getElementById('status-display');
 const displayNote = document.getElementById('note-display');
 const logContainer = document.getElementById('app-log');
-const pianoContainer = document.getElementById('piano');
+const pianoContainer = document.getElementById('piano-container');
+const pianoInner = document.getElementById('piano');
+
+// Sheet Music Elements
+const sheetMusicContent = document.getElementById('sheet-music-content');
+const btnClearSheet = document.getElementById('btn-clear-sheet');
 
 // Game Controls
 const btnRecord = document.getElementById('btn-record');
@@ -46,9 +62,21 @@ const learningStatus = document.getElementById('learning-status');
 // === INIT ===
 window.onload = () => {
     generatePiano();
-    scrollToMiddle();
+    
+    // Initial scroll setup
+    pianoContainerWidth = pianoContainer.clientWidth;
+    scrollToMiddleImmediate(); // Start i midten
+    
+    // Start den myke scroll-loopen
+    requestAnimationFrame(updateScrollLoop);
+    
     updateButtonStates();
     log("Applikasjon lastet. Klar.");
+};
+
+// Oppdater bredde ved resize
+window.onresize = () => {
+    pianoContainerWidth = pianoContainer.clientWidth;
 };
 
 // === LOGGING FUNKSJON ===
@@ -59,7 +87,6 @@ function log(message) {
     entry.innerHTML = `<span class="log-time">[${time}]</span> ${message}`;
     logContainer.appendChild(entry);
     logContainer.scrollTop = logContainer.scrollHeight;
-    // console.log(`[PianoLog] ${message}`);
 }
 
 // === HJELPEFUNKSJON FOR AUDIO CONTEXT ===
@@ -75,7 +102,7 @@ function ensureAudioContext() {
 
 // === PIANO GENERERING ===
 function generatePiano() {
-    pianoContainer.innerHTML = ''; 
+    pianoInner.innerHTML = ''; 
     let whiteKeyCount = 0;
 
     for (let i = 21; i <= 108; i++) {
@@ -101,7 +128,7 @@ function generatePiano() {
         // MOUSE / TOUCH EVENTS
         key.addEventListener('mousedown', (e) => {
             e.preventDefault(); 
-            handleInput(noteId, frequency, true); // True = input fra bruker
+            handleInput(noteId, frequency, true); 
         });
         key.addEventListener('mouseup', () => stopTone(noteId));
         key.addEventListener('mouseleave', () => stopTone(noteId));
@@ -112,34 +139,126 @@ function generatePiano() {
         });
         key.addEventListener('touchend', () => stopTone(noteId));
 
-        pianoContainer.appendChild(key);
+        pianoInner.appendChild(key);
     }
 }
 
-function scrollToMiddle() {
+// === SMART SCROLL LOGIC ===
+
+function scrollToMiddleImmediate() {
     const middleC = document.getElementById('key-C4');
     if (middleC) {
-        const containerWidth = document.getElementById('piano-container').clientWidth;
-        const scrollPos = middleC.offsetLeft - (containerWidth / 2) + (WHITE_KEY_WIDTH / 2);
-        document.getElementById('piano-container').scrollLeft = scrollPos;
+        const centerPos = middleC.offsetLeft - (pianoContainerWidth / 2) + (WHITE_KEY_WIDTH / 2);
+        pianoContainer.scrollLeft = centerPos;
+        targetScrollPos = centerPos; // Sync target
     }
 }
+
+// Denne kjører hver frame for å gi myk bevegelse
+function updateScrollLoop() {
+    // 1. Sjekk om vi trenger å oppdatere target basert på aktiv nøkkel
+    if (currentActiveKey) {
+        const keyLeft = currentActiveKey.offsetLeft;
+        const keyWidth = currentActiveKey.classList.contains('black') ? BLACK_KEY_WIDTH : WHITE_KEY_WIDTH;
+        const keyCenter = keyLeft + (keyWidth / 2);
+        
+        // Hvor er nøkkelen i forhold til hva vi ser akkurat nå?
+        const relativePos = keyCenter - pianoContainer.scrollLeft;
+
+        // Er vi nær venstre kant?
+        if (relativePos < SCROLL_TRIGGER_MARGIN) {
+            // Mål: Sentrer nøkkelen
+            targetScrollPos = keyCenter - (pianoContainerWidth / 2);
+        }
+        // Er vi nær høyre kant?
+        else if (relativePos > (pianoContainerWidth - SCROLL_TRIGGER_MARGIN)) {
+            // Mål: Sentrer nøkkelen
+            targetScrollPos = keyCenter - (pianoContainerWidth / 2);
+        }
+    }
+
+    // 2. Utfør selve bevegelsen (Linear Interpolation)
+    // Sjekk diff
+    const currentScroll = pianoContainer.scrollLeft;
+    const diff = targetScrollPos - currentScroll;
+
+    // Hvis diffen er stor nok til å bry seg om
+    if (Math.abs(diff) > 1) {
+        // Flytt 5% av avstanden (SCROLL_SMOOTHING) per frame
+        pianoContainer.scrollLeft = currentScroll + (diff * SCROLL_SMOOTHING);
+    }
+
+    requestAnimationFrame(updateScrollLoop);
+}
+
+
+// === SHEET MUSIC / TRANSKRIPSJON ===
+
+function recordNoteStart(noteId) {
+    // Hvis noten allerede er aktiv (f.eks. ved raske trykk), oppdaterer vi ikke starttiden
+    // slik at vi får én lang blokk i stedet for flimring, eller vi avslutter forrige?
+    // La oss si: Nytt trykk = ny note.
+    if (activeNoteStartTimes.has(noteId)) {
+        // Avslutt forrige før vi starter ny (sikkerhetsnett)
+        recordNoteEnd(noteId); 
+    }
+    activeNoteStartTimes.set(noteId, Date.now());
+}
+
+function recordNoteEnd(noteId) {
+    if (!activeNoteStartTimes.has(noteId)) return;
+
+    const startTime = activeNoteStartTimes.get(noteId);
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    activeNoteStartTimes.delete(noteId);
+
+    // Filterer ut ekstremt korte "glitch" trykk (under 50ms)
+    if (duration < 50) return;
+
+    createNoteBlock(noteId, duration);
+}
+
+function createNoteBlock(noteId, duration) {
+    const block = document.createElement('div');
+    block.className = 'note-block';
+    block.innerText = noteId;
+    
+    // Beregn bredde. F.eks. 100ms = 20px. 
+    // Juster faktor (0.2) etter hvor raskt "papiret" skal gå
+    let width = duration * 0.1; 
+    if (width < 30) width = 30; // Minste bredde for lesbarhet
+    
+    block.style.width = `${width}px`;
+
+    // Fargekode basert på om det er svart/hvit tangent? Eller bare en standard farge.
+    // Vi bruker CSS standard, men kan legge til custom style hvis ønskelig.
+    
+    sheetMusicContent.appendChild(block);
+    
+    // Auto-scroll notearket til slutten
+    const scrollArea = document.getElementById('sheet-music-scroll');
+    scrollArea.scrollLeft = scrollArea.scrollWidth;
+}
+
+// Tøm noteark
+btnClearSheet.addEventListener('click', () => {
+    sheetMusicContent.innerHTML = '';
+    log("Noteark tømt.");
+});
+
 
 // === GAME LOGIC & INPUT HANDLING ===
 
-// Sentral funksjon som kalles enten man klikker eller mic detekterer en tone
 function handleInput(noteId, frequency, isClick) {
-    // 1. Spill lyd (hvis klikk, mic lager lyden selv)
     if (isClick) {
         playTone(noteId, frequency);
-    } else {
-        // Hvis mic, bare visuelt (highlightKey håndteres av updatePitch, men vi trenger game logic)
     }
 
-    // 2. Game Logic
+    // Spill-logikk
     if (isRecording) {
         recordedSequence.push(noteId);
-        log(`Tatt opp: ${noteId} (Totalt: ${recordedSequence.length})`);
+        log(`Tatt opp: ${noteId}`);
         learningStatus.innerText = `Tar opp... Antall noter: ${recordedSequence.length}`;
         updateButtonStates();
     } 
@@ -149,17 +268,15 @@ function handleInput(noteId, frequency, isClick) {
 }
 
 function checkPlayerInput(noteId) {
-    if (challengeIndex >= recordedSequence.length) return; // Ferdig
+    if (challengeIndex >= recordedSequence.length) return; 
 
     const expectedNote = recordedSequence[challengeIndex];
     const keyElement = document.getElementById(`key-${noteId}`);
 
     if (noteId === expectedNote) {
-        // RIKTIG
         log(`Riktig! (${noteId})`);
         challengeIndex++;
         
-        // Visuell feedback (Grønn)
         if (keyElement) {
             keyElement.classList.add('correct');
             setTimeout(() => keyElement.classList.remove('correct'), 300);
@@ -175,9 +292,7 @@ function checkPlayerInput(noteId) {
         }
 
     } else {
-        // FEIL
-        log(`Feil note. Du spilte ${noteId}, ventet ${expectedNote}`);
-        // Visuell feedback (Rød)
+        log(`Feil note. Spilte ${noteId}, ventet ${expectedNote}`);
         if (keyElement) {
             keyElement.classList.add('wrong');
             setTimeout(() => keyElement.classList.remove('wrong'), 300);
@@ -186,19 +301,17 @@ function checkPlayerInput(noteId) {
     }
 }
 
-// === BUTTON EVENT LISTENERS ===
+// === BUTTON EVENTS ===
 
 btnRecord.addEventListener('click', () => {
     if (isRecording) {
-        // Stopp opptak
         isRecording = false;
         learningStatus.innerText = `Opptak ferdig. ${recordedSequence.length} noter lagret.`;
         log("Stoppet opptak.");
     } else {
-        // Start opptak
         recordedSequence = [];
         isRecording = true;
-        isChallenging = false; // Avbryt evt spill
+        isChallenging = false; 
         learningStatus.innerText = "🔴 TAR OPP! Spill noter nå...";
         log("Startet opptak.");
     }
@@ -213,26 +326,10 @@ btnPlaySeq.addEventListener('click', async () => {
     learningStatus.innerText = "Spiller fasit...";
     log("Spiller av lagret sekvens...");
 
-    // Spill av sekvensen
     for (let i = 0; i < recordedSequence.length; i++) {
         const noteId = recordedSequence[i];
-        
-        // Finn frekvens (trengs for playTone)
-        // Vi kan jukse og regne den ut, eller lagre den. Regner ut:
-        // Men playTone trenger frekvens. La oss finne elementet og simulere.
-        // Eller enklere: Vi lager en demo-lyd funksjon.
-        
-        // Vi må finne frekvensen basert på navnet for å bruke synth
-        // Enklest: Vi bruker playTone, men må vite Hz. 
-        // Vi kan hente Hz fra noteFromPitch logikken baklengs, eller bare hardkode Hz i generatePiano?
-        // La oss gjøre det enkelt: Vi vet ikke Hz her uten å regne.
-        // Quick fix: Finn key element og bruk en standard lyd eller regn ut.
-        // Vi implementerte formelen i generatePiano: 440 * Math.pow(2, (i - 69) / 12)
-        // Men vi har ikke 'i'.
-        // Løsning: playToneDemo som tar noteId og bruker oscillator.
-        
         await playDemoNote(noteId);
-        await new Promise(r => setTimeout(r, 100)); // Pause mellom noter
+        await new Promise(r => setTimeout(r, 100)); 
     }
 
     isPlayingSequence = false;
@@ -243,7 +340,6 @@ btnPlaySeq.addEventListener('click', async () => {
 
 btnChallenge.addEventListener('click', () => {
     if (recordedSequence.length === 0) return;
-    
     isChallenging = true;
     isRecording = false;
     challengeIndex = 0;
@@ -253,11 +349,9 @@ btnChallenge.addEventListener('click', () => {
 });
 
 function updateButtonStates() {
-    // Record Button text
-    btnRecord.innerText = isRecording ? "⏹ Stopp Opptak" : "⏺ Start Opptak";
+    btnRecord.innerText = isRecording ? "⏹ Stopp Opptak" : "⏺ Start Opptak (Simon)";
     btnRecord.classList.toggle('active', isRecording);
 
-    // Disable buttons during action
     btnRecord.disabled = isPlayingSequence || isChallenging;
     btnPlaySeq.disabled = isRecording || isPlayingSequence || isChallenging || recordedSequence.length === 0;
     btnChallenge.disabled = isRecording || isPlayingSequence || isChallenging || recordedSequence.length === 0;
@@ -285,9 +379,15 @@ function playTone(noteId, frequency) {
 
     const key = document.getElementById(`key-${noteId}`);
     if (key) key.classList.add('active');
+    
+    // TRANSKRIPSJON START
+    recordNoteStart(noteId);
 }
 
 function stopTone(noteId) {
+    // TRANSKRIPSJON STOP
+    recordNoteEnd(noteId);
+
     if (!activeOscillators.has(noteId)) return;
     const { osc, gainNode } = activeOscillators.get(noteId);
     const ctx = audioContext;
@@ -307,18 +407,11 @@ function stopTone(noteId) {
     activeOscillators.delete(noteId);
 
     const key = document.getElementById(`key-${noteId}`);
-    // Fjern active KUN hvis vi ikke spiller av en demo-sekvens (som styrer lyset selv)
-    // Men for manuell spilling er dette ok.
     if (key && !isPlayingSequence) key.classList.remove('active');
 }
 
-// Funksjon for å spille av en note (for fasit-avspilling)
 function playDemoNote(noteId) {
     return new Promise(resolve => {
-        // Vi må finne frekvens. Vi jukser og bruker en map eller regner ut på nytt?
-        // La oss søke opp elementet og se om vi lagret frekvens? Nei.
-        // La oss regne ut fra ID.
-        // ID: C4. Note: C, Octave: 4.
         const regex = /([A-G]#?)(-?\d+)/;
         const match = noteId.match(regex);
         if (!match) { resolve(); return; }
@@ -326,37 +419,43 @@ function playDemoNote(noteId) {
         const noteName = match[1];
         const octave = parseInt(match[2]);
         const noteIndex = NOTE_STRINGS.indexOf(noteName);
-        // MIDI note calculation: (octave + 1) * 12 + noteIndex
         const midi = (octave + 1) * 12 + noteIndex;
         const freq = 440 * Math.pow(2, (midi - 69) / 12);
 
-        // Spill
+        // TRANSKRIPSJON FOR DEMO (Valgfritt, kommenter ut recordNoteStart/End hvis du ikke vil ha fasit på arket)
+        recordNoteStart(noteId);
+
         const ctx = ensureAudioContext();
         const osc = ctx.createOscillator();
         const gainNode = ctx.createGain();
         osc.type = 'triangle';
         osc.frequency.setValueAtTime(freq, ctx.currentTime);
-        gainNode.gain.setValueAtTime(0.5, ctx.currentTime); // Instant attack
+        gainNode.gain.setValueAtTime(0.5, ctx.currentTime); 
         
         osc.connect(gainNode);
         gainNode.connect(ctx.destination);
         osc.start();
 
-        // Visuelt
         const key = document.getElementById(`key-${noteId}`);
         if (key) key.classList.add('active');
 
-        // Stopp etter 500ms
+        // Sett global aktiv key for at scrollen skal følge med på demoen også!
+        currentActiveKey = key;
+
         setTimeout(() => {
             gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
             osc.stop(ctx.currentTime + 0.1);
             if (key) key.classList.remove('active');
+            
+            // TRANSKRIPSJON SLUTT FOR DEMO
+            recordNoteEnd(noteId);
+            
             resolve();
-        }, 500);
+        }, 500); // Demo varighet 500ms
     });
 }
 
-// === MIKROFON HÅNDTERING (Med Stabilitetssjekk) ===
+// === MIKROFON HÅNDTERING ===
 btnStartMic.addEventListener('click', toggleMicrophone);
 
 function toggleMicrophone() {
@@ -369,6 +468,7 @@ function toggleMicrophone() {
         lastRegisteredNote = null;
         const keys = document.querySelectorAll('.key');
         keys.forEach(k => k.classList.remove('active'));
+        currentActiveKey = null; // Stopp scroll
     } else {
         startPitchDetect();
     }
@@ -407,16 +507,21 @@ function updatePitch() {
     const ac = autoCorrelate(buf, audioContext.sampleRate);
 
     if (ac === -1) {
-        // Stillhet / Ingen tone
         micStableFrames = 0;
         micPendingNote = null;
-        
-        // Fjern visuell markering umiddelbart ved stillhet? 
-        // Kan føre til blinking. Vi lar den stå bittelitt eller fjerner hvis "active" er fra mic.
-        if (currentActiveKey) {
+        if (currentActiveKey && !activeOscillators.size) { 
+            // Fjern visuell markering ved stillhet (hvis ikke brukeren klikker med musa)
             currentActiveKey.classList.remove('active');
             currentActiveKey = null;
         }
+        // Vi bør kanskje kalle recordNoteEnd her hvis mic ble stille?
+        // Siden vi ikke har noteId her enkelt tilgjengelig, er det litt tricky.
+        // Løsning: Lagre lastVisualizedNote og stopp den.
+        if (lastRegisteredNote) {
+            recordNoteEnd(lastRegisteredNote);
+            lastRegisteredNote = null;
+        }
+
     } else {
         const note = noteFromPitch(ac);
         const noteName = NOTE_STRINGS[note % 12];
@@ -425,7 +530,6 @@ function updatePitch() {
         
         displayNote.innerText = `Note: ${noteId} (${Math.round(ac)} Hz)`;
         
-        // --- STABILITETSSJEKK FOR SPILL-INPUT ---
         if (noteId === micPendingNote) {
             micStableFrames++;
         } else {
@@ -433,18 +537,35 @@ function updatePitch() {
             micStableFrames = 0;
         }
 
-        // Visuell feedback (Alltid oppdater visuelt selv om ikke "stabilt" nok for spillregistrering ennå)
-        // For å gjøre det responsivt visuelt:
-        highlightKeyFromMic(noteId);
+        // Visuelt og Transkripsjon via mic
+        const keyElement = document.getElementById(`key-${noteId}`);
+        if (keyElement) {
+            
+            // Oppdater Active Key for Scroll og Highlight
+            if (currentActiveKey && currentActiveKey !== keyElement) {
+                currentActiveKey.classList.remove('active');
+                // Hvis noten byttet, avslutt forrige for transkripsjon
+                if (lastRegisteredNote && lastRegisteredNote !== noteId) {
+                    recordNoteEnd(lastRegisteredNote);
+                }
+            }
+            keyElement.classList.add('active');
+            currentActiveKey = keyElement;
 
-        // Registrer som input i spillet HVIS stabil nok OG ny tone
-        if (micStableFrames > MIC_STABILITY_THRESHOLD) {
-            if (noteId !== lastRegisteredNote) {
-                // Vi har en ny, stabil tone!
-                log(`Mic Input: ${noteId}`);
-                handleInput(noteId, ac, false); // False = input fra mic (ikke klikk)
+            // Transkripsjon start (kun hvis vi ikke allerede tracker denne noten)
+            if (!activeNoteStartTimes.has(noteId)) {
+                recordNoteStart(noteId);
                 lastRegisteredNote = noteId;
             }
+        }
+
+        // Spillinput (krever mer stabilitet)
+        if (micStableFrames > MIC_STABILITY_THRESHOLD) {
+             // Logic handled above mostly, input trigger could be separate
+             if (noteId !== lastRegisteredNote) {
+                 // Denne blokken kjører kun ved *endring* etter stabil tone
+                 handleInput(noteId, ac, false); 
+             }
         }
     }
 
@@ -507,15 +628,4 @@ function noteFromPitch(frequency) {
     return Math.round(noteNum) + 69;
 }
 
-function highlightKeyFromMic(noteId) {
-    const keyElement = document.getElementById(`key-${noteId}`);
-    if (!keyElement) return;
-
-    if (currentActiveKey && currentActiveKey !== keyElement) {
-        currentActiveKey.classList.remove('active');
-    }
-    keyElement.classList.add('active');
-    currentActiveKey = keyElement;
-}
-
-/* Version: #10 */
+/* Version: #13 */
