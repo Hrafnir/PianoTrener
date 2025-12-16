@@ -1,4 +1,4 @@
-/* Version: #26 */
+/* Version: #28 */
 
 // === KONFIGURASJON ===
 const NOTE_STRINGS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -6,7 +6,7 @@ const MIN_VOLUME_THRESHOLD = 0.02;
 const WHITE_KEY_WIDTH = 40; 
 const BLACK_KEY_WIDTH = 24; 
 const MIC_STABILITY_THRESHOLD = 5; 
-const SCROLL_SMOOTHING = 0.05; 
+const SCROLL_SMOOTHING = 0.1; // Litt raskere respons
 const SCROLL_TRIGGER_MARGIN = 150; 
 
 // === GLOBALE VARIABLER ===
@@ -22,11 +22,10 @@ let currentActiveKey = null;
 const activeOscillators = new Map(); 
 
 // MUSIC DATA
-// Format: { note: "C4", duration: "q", type: "n" (note) eller "r" (rest) }
 let recordedSequence = []; 
 let currentDuration = "q"; 
 let bpm = 100;
-let timeSignature = "4/4"; // String for VexFlow og logikk
+let timeSignature = "4/4"; 
 let metronomeEnabled = false;
 
 // GAME STATE
@@ -83,7 +82,11 @@ window.onload = () => {
 
     generatePiano();
     pianoContainerWidth = pianoContainer.clientWidth;
-    scrollToMiddleImmediate(); 
+    // Vent litt slik at layout setter seg før vi scroller til midten
+    setTimeout(() => {
+        scrollToMiddleImmediate(); 
+    }, 100);
+    
     requestAnimationFrame(updateScrollLoop);
     renderSheetMusic();
     updateButtonStates();
@@ -106,7 +109,7 @@ bpmInput.addEventListener('change', (e) => {
 timeSigInput.addEventListener('change', (e) => {
     timeSignature = e.target.value;
     log(`Taktart satt til ${timeSignature}`);
-    renderSheetMusic(); // Tegn noter på nytt med nye taktstreker
+    renderSheetMusic(); 
 });
 
 btnToggleMetronome.addEventListener('click', () => {
@@ -120,10 +123,25 @@ btnAddRest.addEventListener('click', () => {
     addRest();
 });
 
-// === KEYBOARD LISTENER ===
+// === KEYBOARD LISTENER (Duration + Scroll) ===
 window.addEventListener('keydown', (e) => {
-    if(e.target.tagName === 'INPUT') return; // Ikke trigger hvis man skriver i BPM felt
+    if(e.target.tagName === 'INPUT') return; 
 
+    // Scroll med piltaster
+    if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        targetScrollPos -= 100; // Flytt 100px venstre
+        const maxScroll = pianoContainer.scrollWidth - pianoContainer.clientWidth;
+        if(targetScrollPos < 0) targetScrollPos = 0;
+    } 
+    else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        targetScrollPos += 100; // Flytt 100px høyre
+        const maxScroll = pianoContainer.scrollWidth - pianoContainer.clientWidth;
+        if(targetScrollPos > maxScroll) targetScrollPos = maxScroll;
+    }
+
+    // Tonelengder
     let newDur = null;
     let uiId = null;
 
@@ -133,7 +151,7 @@ window.addEventListener('keydown', (e) => {
         case '4': newDur = 'q'; uiId = 'dur-4'; break;
         case '8': newDur = '8'; uiId = 'dur-8'; break;
         case '9': newDur = '16'; uiId = 'dur-9'; break;
-        case 'p': addRest(); return; // P for Pause
+        case 'p': addRest(); return; 
     }
 
     if (newDur) {
@@ -160,8 +178,6 @@ function addRest() {
         log("Start opptak for å legge til pauser.");
         return;
     }
-    // Legg til pause i sekvensen
-    // For VexFlow pauser bruker vi "b/4" som default key, og type "r"
     recordedSequence.push({ 
         note: "b/4", 
         duration: currentDuration, 
@@ -194,7 +210,7 @@ function ensureAudioContext() {
     return audioContext;
 }
 
-// === PIANO GENERATION & SCROLL (Uendret kjerne) ===
+// === PIANO GENERATION & SCROLL ===
 function generatePiano() {
     pianoInner.innerHTML = ''; 
     let whiteKeyCount = 0;
@@ -217,59 +233,89 @@ function generatePiano() {
         }
         
         // Mouse/Touch Handlers
-        const start = (e) => { e.preventDefault(); handleInput(noteId, frequency, true); };
+        const start = (e) => { 
+            e.preventDefault(); 
+            handleInput(noteId, frequency, true); 
+        };
         const end = () => stopTone(noteId);
+
+        // Touch specific: Allow scrolling if multi-touch
+        const touchStart = (e) => {
+            // Hvis mer enn 1 finger (scroll/zoom), ikke prevent default
+            if (e.touches.length > 1) return;
+            
+            // Hvis 1 finger, spill og stopp scroll
+            e.preventDefault();
+            handleInput(noteId, frequency, true);
+        };
+
         key.addEventListener('mousedown', start);
         key.addEventListener('mouseup', end);
         key.addEventListener('mouseleave', end);
-        key.addEventListener('touchstart', start);
+        
+        // Bruker egen touchStart logic
+        key.addEventListener('touchstart', touchStart, { passive: false });
         key.addEventListener('touchend', end);
+        
         pianoInner.appendChild(key);
     }
 }
 
 function scrollToMiddleImmediate() {
     const el = document.getElementById('key-C4');
-    if(el) pianoContainer.scrollLeft = el.offsetLeft - (pianoContainerWidth/2) + 20;
+    if(el) {
+        // Beregn senterposisjon
+        const centerPos = el.offsetLeft - (pianoContainerWidth/2) + 20;
+        pianoContainer.scrollLeft = centerPos;
+        targetScrollPos = centerPos; // Sync target så den ikke hopper tilbake
+    }
 }
 
 function updateScrollLoop() {
+    // Hvis vi har en aktiv nøkkel (spilles), sentrer på den
     if (currentActiveKey) {
         const center = currentActiveKey.offsetLeft + (currentActiveKey.classList.contains('black')?12:20);
         const rel = center - pianoContainer.scrollLeft;
+        
+        // Bare juster hvis vi nærmer oss kanten
         if (rel < SCROLL_TRIGGER_MARGIN || rel > pianoContainerWidth - SCROLL_TRIGGER_MARGIN) {
             targetScrollPos = center - (pianoContainerWidth / 2);
         }
     }
+    
+    // Utfør scrolling mot target
     const diff = targetScrollPos - pianoContainer.scrollLeft;
-    if (Math.abs(diff) > 1) pianoContainer.scrollLeft += diff * SCROLL_SMOOTHING;
+    
+    // Hvis forskjellen er liten, snap til posisjon for å spare CPU
+    if (Math.abs(diff) > 1) {
+        pianoContainer.scrollLeft += diff * SCROLL_SMOOTHING;
+    } else {
+        pianoContainer.scrollLeft = targetScrollPos;
+    }
+    
     requestAnimationFrame(updateScrollLoop);
 }
 
 
-// === VEXFLOW RENDERER (MULTI-LINE & TAKT) ===
+// === VEXFLOW RENDERER ===
 function renderSheetMusic() {
     if (!VF) return; 
     vexWrapper.innerHTML = '';
     
-    // Konfigurasjon
     const availableWidth = vexWrapper.clientWidth - 20; 
-    const staveWidth = availableWidth; // Bruk hele bredden
+    const staveWidth = availableWidth; 
     const staveX = 10;
-    let staveY = 20; // Start Y
-    const lineSpacing = 120; // Avstand mellom linjer
+    let staveY = 20; 
+    const lineSpacing = 120; 
 
     const renderer = new VF.Renderer(vexWrapper, VF.Renderer.Backends.SVG);
-    // Vi setter høyde dynamisk til slutt, men starter med en
     renderer.resize(availableWidth, 500); 
     const context = renderer.getContext();
 
-    // Parse Taktart
     const timeSigParts = timeSignature.split('/');
     const beatsPerMeasure = parseInt(timeSigParts[0]);
-    const beatValue = parseInt(timeSigParts[1]); // e.g. 4 (quarter note)
+    const beatValue = parseInt(timeSigParts[1]); 
 
-    // Helper: Konverter varighet til beat-verdi (kvartnote = 1)
     const getBeatValue = (dur) => {
         switch(dur) {
             case 'w': return 4;
@@ -281,9 +327,8 @@ function renderSheetMusic() {
         }
     };
 
-    // 1. Konverter alle data til VexFlow Notes
     const allNotes = recordedSequence.map((item, index) => {
-        let vfKey = "b/4"; // Default for rest
+        let vfKey = "b/4"; 
         let accidental = "";
         
         if (item.type !== 'r') {
@@ -304,7 +349,6 @@ function renderSheetMusic() {
         const staveNote = new VF.StaveNote(noteStruct);
         if (accidental) staveNote.addModifier(0, new VF.Accidental(accidental));
 
-        // Coloring
         if (isChallenging) {
             if (index < challengeIndex) staveNote.setStyle({fillStyle: "#4caf50", strokeStyle: "#4caf50"});
             else if (index === challengeIndex) staveNote.setStyle({fillStyle: "#2196f3", strokeStyle: "#2196f3"});
@@ -312,15 +356,12 @@ function renderSheetMusic() {
         return { note: staveNote, beats: getBeatValue(item.duration) };
     });
 
-    // 2. Grupper i takter (Measures)
     let measures = [];
     let currentMeasure = [];
     let currentBeats = 0;
 
     allNotes.forEach((obj) => {
-        // Hvis noten alene er større enn takten, må vi bare legge den til (forenkling)
         if (currentBeats + obj.beats > beatsPerMeasure) {
-            // Fullfør forrige takt
             measures.push(currentMeasure);
             currentMeasure = [];
             currentBeats = 0;
@@ -330,32 +371,20 @@ function renderSheetMusic() {
     });
     if (currentMeasure.length > 0) measures.push(currentMeasure);
 
-
-    // 3. Tegn takter linje for linje
     let currentLineY = staveY;
     let currentLineX = staveX;
-    // Estimat: Hvor mange piksler per takt? 
-    // Vi må være litt dynamiske. Vi prøver å fylle linja.
     
-    // Vi bruker VexFlow's Formatter til å beregne bredde, men for linjeskift
-    // må vi gjette litt eller bruke en fast bredde per takt foreløpig.
-    const measureWidth = 250; // Fast bredde per takt for enkelhets skyld
+    const measureWidth = 250; 
     const measuresPerLine = Math.floor(availableWidth / measureWidth);
     
-    // Start tegning
     let measureIndex = 0;
     
     while (measureIndex < measures.length) {
-        // Beregn posisjon
         let x = staveX + ((measureIndex % measuresPerLine) * measureWidth);
         let y = staveY + (Math.floor(measureIndex / measuresPerLine) * lineSpacing);
         
-        // Siste takt på linja kan være bredere for å fylle ut? Nei, hold det enkelt.
-        
-        // Opprett Stave
         let stave = new VF.Stave(x, y, measureWidth);
         
-        // Første takt i stykket eller ny linje? Tegn nøkkel og taktart
         if (measureIndex === 0 || measureIndex % measuresPerLine === 0) {
             stave.addClef("treble");
             if (measureIndex === 0) stave.addTimeSignature(timeSignature);
@@ -363,32 +392,20 @@ function renderSheetMusic() {
         
         stave.setContext(context).draw();
         
-        // Legg noter i Voice
-        // Vi må beregne riktig num_beats for stemmen. 
-        // VexFlow krever at voice matcher takten ELLER notene.
-        // For å være trygg bruker vi notenes totale beats for denne takten.
-        // (Selv om det er mindre enn 4/4).
-        
         const notesInMeasure = measures[measureIndex];
-        
-        // Trenger vi beams? 
         const beams = VF.Beam.generateBeams(notesInMeasure);
         
-        // Finn total lengde i takten for Voice config
-        // Her jukser vi litt og bruker en "soft" voice for å unngå strict timing errors
-        // hvis brukeren har spilt 3.5 beats i en 4/4 takt.
         const voice = new VF.Voice({num_beats: beatsPerMeasure, beat_value: beatValue});
         voice.setStrict(false); 
         voice.addTickables(notesInMeasure);
         
-        new VF.Formatter().joinVoices([voice]).format([voice], measureWidth - 20); // -20 for padding
+        new VF.Formatter().joinVoices([voice]).format([voice], measureWidth - 20); 
         
         voice.draw(context, stave);
         beams.forEach(b => b.setContext(context).draw());
 
         measureIndex++;
         
-        // Oppdater total høyde for resize
         renderer.resize(availableWidth, y + 150);
     }
 }
@@ -403,22 +420,13 @@ btnPlaySeq.addEventListener('click', async () => {
     learningStatus.innerText = "Spiller av...";
     clearHints();
 
-    // Kalkuler tid per beat (ms)
-    // BPM = Beats Per Minute. 1 min = 60000 ms.
-    // Beat duration = 60000 / BPM.
-    // Dette er lengden på en Fjerdedelsnote (Quarter note).
     const msPerBeat = 60000 / bpm;
-
-    // Metronom start
-    // Vi spiller klikk på hver "Beat" (Quarter note).
-    // Vi må holde styr på "accumulated time" for å vite når klikket skal komme.
-    let timeCursor = 0; // i beats
+    let timeCursor = 0; 
 
     for (let i = 0; i < recordedSequence.length; i++) {
         const item = recordedSequence[i];
         
-        // Beregn varighet for denne noten i ms
-        let noteBeats = 1; // Default quarter
+        let noteBeats = 1; 
         switch(item.duration) {
             case 'w': noteBeats = 4; break;
             case 'h': noteBeats = 2; break;
@@ -429,26 +437,13 @@ btnPlaySeq.addEventListener('click', async () => {
         
         const durationMs = noteBeats * msPerBeat;
 
-        // Metronom Klikk Logikk
-        // Vi spiller et klikk NÅ.
-        // Men hva hvis noten er en helnote (4 beats)? Da vil vi ha 4 klikk mens noten spilles.
-        // Dette krever parallell kjøring. 
-        // Forenklet: Vi spiller klikk ved STARTEN av noten hvis metronom er på.
-        // (Pro versjon krever Web Audio API scheduling, dette er async/await versjon)
-        
         if (metronomeEnabled) playClick();
 
         if (item.type !== 'r') {
-            // Spill tone
-            playDemoTone(item.note, durationMs); // Sender varighet til tone
+            playDemoTone(item.note, durationMs); 
         }
 
-        // Vent hele varigheten før neste note
         await new Promise(r => setTimeout(r, durationMs));
-        
-        // For lengre noter (hel/halv), vil vi mangle klikk 2, 3, 4 med denne enkle loopen.
-        // For en barne-app er dette kanskje ok, eller vi kan splitte ventetiden?
-        // La oss la det være enkelt nå for stabilitet.
     }
 
     isPlayingSequence = false;
@@ -466,14 +461,12 @@ function playClick() {
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.start();
-    osc.stop(ctx.currentTime + 0.05); // Kort klikk
+    osc.stop(ctx.currentTime + 0.05); 
 }
 
 function playDemoTone(noteId, durationMs) {
-    // Spill noten i nesten hele duration (litt gap for staccato effekt så man hører skille)
     const playDur = durationMs * 0.9; 
     
-    // Parse frekvens
     const regex = /([A-G]#?)(-?\d+)/;
     const match = noteId.match(regex);
     if (!match) return;
@@ -489,7 +482,6 @@ function playDemoTone(noteId, durationMs) {
     osc.type = 'triangle';
     osc.frequency.setValueAtTime(freq, ctx.currentTime);
     
-    // Envelope
     gainNode.gain.setValueAtTime(0, ctx.currentTime);
     gainNode.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.02);
     gainNode.gain.setValueAtTime(0.5, ctx.currentTime + (playDur/1000) - 0.05);
@@ -500,7 +492,6 @@ function playDemoTone(noteId, durationMs) {
     osc.start();
     osc.stop(ctx.currentTime + (playDur/1000) + 0.1);
 
-    // Visuals
     const key = document.getElementById(`key-${noteId}`);
     if (key) key.classList.add('active');
     
@@ -513,7 +504,7 @@ function playDemoTone(noteId, durationMs) {
 // === STANDARD LOGIKK (Input, Challenge, Mic) ===
 
 function handleInput(noteId, freq, isClick) {
-    if (isClick) playTone(noteId, freq); // Manuell spilling
+    if (isClick) playTone(noteId, freq); 
 
     if (isRecording) {
         recordedSequence.push({ note: noteId, duration: currentDuration, type: 'n' });
@@ -529,13 +520,9 @@ function checkPlayerInput(noteId) {
     if (challengeIndex >= recordedSequence.length) return;
     const target = recordedSequence[challengeIndex];
     
-    // Hopp over pauser i challenge? Nei, man må vente? 
-    // For enkelhets skyld i challenge modus, hvis det er pause, hopper vi automatisk videre
-    // etter en liten delay, eller krever trykk på "Pause" knapp?
-    // La oss si: Hvis neste er pause, auto-skip.
     if (target.type === 'r') {
         challengeIndex++;
-        checkPlayerInput(noteId); // Rekursiv sjekk neste
+        checkPlayerInput(noteId); 
         return;
     }
 
@@ -557,7 +544,6 @@ function checkPlayerInput(noteId) {
 
 // Helpers
 function playTone(noteId, freq) {
-    // For manuell klikking/spilling (ikke demo)
     if(activeOscillators.has(noteId)) return;
     const ctx = ensureAudioContext();
     const osc = ctx.createOscillator();
@@ -679,4 +665,4 @@ function autoCorrelate(buf, sr) {
 }
 function noteFromPitch(f) { return Math.round(12*(Math.log(f/440)/Math.log(2)))+69; }
 
-/* Version: #26 */
+/* Version: #28 */
