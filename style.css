@@ -1,4 +1,4 @@
-/* Version: #12 */
+/* Version: #15 */
 
 :root {
     --bg-color: #f0f2f5;
@@ -6,11 +6,12 @@
     --piano-bg: #333;
     --white-key-color: #fff;
     --black-key-color: #000;
-    --active-color: #ffd700; /* Gullfarge for aktiv note */
-    --correct-color: #4caf50; /* Grønn for riktig i spill */
-    --wrong-color: #f44336; /* Rød for feil i spill */
+    --active-color: #ffd700; /* Gullfarge for aktiv note (spiller nå) */
+    --hint-color: #2196f3;   /* Blå for "neste note" hint */
+    --correct-color: #4caf50; /* Grønn for riktig */
+    --wrong-color: #f44336;   /* Rød for feil */
     
-    /* Nye variabler for dimensjoner */
+    /* Dimensjoner */
     --white-key-width: 40px;
     --black-key-width: 24px;
     --piano-height: 250px;
@@ -56,6 +57,7 @@ header {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
+    margin-bottom: 10px;
 }
 
 .control-group h3 {
@@ -80,28 +82,22 @@ button {
     border-radius: 5px;
     cursor: pointer;
     transition: background 0.3s;
-    margin-bottom: 0; /* Fjernet bottom margin siden vi bruker gap i button-row */
 }
 
 button:hover:not(:disabled) {
     background-color: #0056b3;
+    opacity: 0.9;
 }
 
 button:disabled {
-    background-color: #cccccc;
+    background-color: #cccccc !important;
     cursor: not-allowed;
     opacity: 0.7;
 }
 
 /* Spesifikke farger for knapper */
 #btn-record { background-color: #d9534f; }
-#btn-record:hover:not(:disabled) { background-color: #c9302c; }
-
-#btn-play-seq { background-color: #5bc0de; }
-#btn-play-seq:hover:not(:disabled) { background-color: #31b0d5; }
-
-#btn-challenge { background-color: #f0ad4e; }
-#btn-challenge:hover:not(:disabled) { background-color: #ec971f; }
+#btn-challenge { background-color: #4caf50; } /* Grønn for start */
 
 #status-display, #note-display, #learning-status {
     margin-top: 5px;
@@ -111,7 +107,7 @@ button:disabled {
     margin-right: 15px;
 }
 
-/* --- SHEET MUSIC (TRANSKRIPSJON) --- */
+/* --- SHEET MUSIC (VexFlow) --- */
 #sheet-container {
     margin-bottom: 20px;
     text-align: left;
@@ -119,45 +115,23 @@ button:disabled {
 
 #sheet-music-scroll {
     width: 100%;
-    height: 100px;
-    background: #fff8e1; /* Svak gul noteark-farge */
+    height: 150px; /* Plass til VexFlow Stave */
+    background: #fff; /* Hvit bakgrunn for noter */
     border: 1px solid #ccc;
     border-radius: 5px;
-    overflow-x: auto; /* Scroll sidelengs */
+    overflow-x: auto;
     overflow-y: hidden;
     padding: 10px;
     box-sizing: border-box;
     display: flex;
     align-items: center;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
 }
 
-#sheet-music-content {
-    display: flex;
-    gap: 5px;
-    /* Innholdet vokser mot høyre */
-}
-
-.note-block {
-    height: 60px;
-    min-width: 40px; /* Minste bredde for korte noter */
-    background-color: #333;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    font-weight: bold;
-    font-size: 14px;
-    border: 2px solid #555;
-    position: relative;
-    box-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-}
-
-/* Svarte tangenter får en annen stil i notearket for tydelighet? 
-   Eller vi bruker samme fargekode. La oss bruke mørk for alt, men tekst viser noten. */
-
-.note-block span {
-    pointer-events: none;
+#vexflow-wrapper {
+    /* VexFlow genererer SVG, vi lar den flyte */
+    display: block;
+    min-width: 100%;
 }
 
 /* --- PIANO STYLES --- */
@@ -226,7 +200,7 @@ button:disabled {
     box-shadow: 2px 2px 2px rgba(0,0,0,0.3);
 }
 
-/* AKTIV STATE (Klikk / Mic) */
+/* INTERAKTIVE TILSTANDER */
 .key.white:active, .key.white.active {
     background: var(--active-color);
     transform: scale(0.98);
@@ -237,12 +211,21 @@ button:disabled {
     transform: scale(0.98);
 }
 
-/* FEEDBACK STATES (Læring) */
+/* Feedback under øving */
 .key.correct {
     background-color: var(--correct-color) !important;
 }
 .key.wrong {
     background-color: var(--wrong-color) !important;
+}
+
+/* HINT (Neste note) */
+.key.hint {
+    background-color: var(--hint-color) !important;
+}
+/* Svarte tangenter trenger lysere hint for å synes, eller vi beholder blå */
+.key.black.hint {
+    background-color: #1976d2 !important; /* Litt mørkere blå */
 }
 
 /* --- LOGGING AREA --- */
@@ -277,4 +260,4 @@ button:disabled {
         height: 180px;
     }
 }
-/* Version: #12 */
+/* Version: #15 */
