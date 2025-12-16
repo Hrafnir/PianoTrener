@@ -1,4 +1,4 @@
-/* Version: #3 */
+/* Version: #5 */
 
 :root {
     --bg-color: #f0f2f5;
@@ -9,6 +9,11 @@
     --active-color: #ffd700; /* Gullfarge for aktiv note */
     --correct-color: #4caf50; /* Grønn for riktig i spill */
     --wrong-color: #f44336; /* Rød for feil i spill */
+    
+    /* Nye variabler for dimensjoner */
+    --white-key-width: 40px;
+    --black-key-width: 24px;
+    --piano-height: 250px;
 }
 
 body {
@@ -23,7 +28,7 @@ body {
 
 .app-container {
     width: 100%;
-    max-width: 800px;
+    max-width: 1000px; /* Økt bredde litt for bedre oversikt */
     background: white;
     padding: 20px;
     border-radius: 10px;
@@ -66,52 +71,76 @@ button:hover {
 /* --- PIANO STYLES --- */
 #piano-container {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start; /* Start fra venstre */
     margin-bottom: 30px;
-    overflow-x: auto; /* I tilfelle liten skjerm */
+    overflow-x: auto; /* Aktiverer scrolling sideveis */
+    padding-bottom: 20px; /* Plass til scrollbar */
+    border: 1px solid #ccc; /* Ramme for å se området tydelig */
+    background: #222; /* Bakgrunn bak scroll */
+}
+
+/* Penere scrollbar (WebKit) */
+#piano-container::-webkit-scrollbar {
+    height: 12px;
+}
+#piano-container::-webkit-scrollbar-track {
+    background: #333;
+}
+#piano-container::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 6px;
+}
+#piano-container::-webkit-scrollbar-thumb:hover {
+    background: #888;
 }
 
 .piano {
     position: relative;
-    height: 250px;
-    width: 100%;
-    max-width: 700px;
+    height: var(--piano-height);
+    /* width settes automatisk av innholdet (fit-content) */
+    width: fit-content; 
+    min-width: 100%;
     background: var(--piano-bg);
-    padding: 10px 10px 0 10px; /* Ramme rundt */
+    padding: 10px 10px 0 10px;
     border-radius: 5px;
-    display: flex; /* Flexboks for hvite tangenter */
+    display: flex; /* Flexboks for hvite tangenter på rad */
 }
 
 .key {
     border-radius: 0 0 5px 5px;
     cursor: pointer;
-    transition: background 0.1s, transform 0.1s;
+    transition: background 0.05s, transform 0.05s;
     user-select: none;
+    box-sizing: border-box; /* Viktig for border */
 }
 
 .key.white {
-    flex: 1; /* Fordeler plassen likt (8 hvite tangenter = 12.5% hver) */
+    width: var(--white-key-width);
+    flex-shrink: 0; /* Hindrer at tangentene krymper */
     background: var(--white-key-color);
-    border: 1px solid #ccc;
+    border: 1px solid #999;
+    border-top: none;
     height: 100%;
     z-index: 1;
-    margin: 0 1px;
+    margin: 0; /* Ingen margin mellom hvite, border fikser skillet */
 }
 
 .key.white:active, .key.white.active {
     background: var(--active-color);
     transform: scale(0.98);
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
 }
 
 .key.black {
     position: absolute;
     top: 10px; /* Juster etter padding på piano-container */
     height: 60%;
-    width: 8%; /* Smalere enn hvite */
+    width: var(--black-key-width);
     background: var(--black-key-color);
     z-index: 2;
     border-radius: 0 0 3px 3px;
     box-shadow: 2px 2px 2px rgba(0,0,0,0.3);
+    /* Left-posisjon settes nå via JS for fullt klaviatur */
 }
 
 .key.black:active, .key.black.active {
@@ -119,18 +148,17 @@ button:hover {
     transform: scale(0.98);
 }
 
-/* Posisjonering av svarte tangenter 
-   Basert på 8 hvite tangenter. Hver hvit er 12.5%.
-   Senterlinjer er ved: 12.5%, 25%, 37.5%, 50%, 62.5%, 75%, 87.5%
-   Vi justerer left % for å treffe mellomrommene.
-*/
-
-#key-C\#4 { left: 10%; }  /* Mellom C og D (12.5% grense) */
-#key-D\#4 { left: 22.5%; } /* Mellom D og E (25% grense) */
-/* Ingen svart mellom E og F (37.5%) */
-#key-F\#4 { left: 47.5%; } /* Mellom F og G (50% grense) */
-#key-G\#4 { left: 60%; }   /* Mellom G og A (62.5% grense) */
-#key-A\#4 { left: 72.5%; } /* Mellom A og B (75% grense) */
+/* Note-navn på tangentene (valgfritt, bra for læring) */
+.key.white::after {
+    content: attr(data-note);
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    color: #999;
+    pointer-events: none;
+}
 
 /* --- LOGGING AREA --- */
 #logging-area {
@@ -159,10 +187,9 @@ button:hover {
     margin-right: 5px;
 }
 
-/* Responsiv justering */
 @media (max-width: 600px) {
     .piano {
         height: 180px;
     }
 }
-/* Version: #3 */
+/* Version: #5 */
