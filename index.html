@@ -1,4 +1,4 @@
-<!-- Version: #6 -->
+<!-- Version: #8 -->
 <!DOCTYPE html>
 <html lang="no">
 <head>
@@ -16,9 +16,28 @@
         </header>
 
         <section id="controls">
-            <button id="btn-start-mic">Start Mikrofon / Lyd</button>
-            <div id="status-display">Status: Klar...</div>
-            <div id="note-display">Note: --</div>
+            <!-- Mikrofon Kontroll -->
+            <div class="control-group">
+                <h3>Fri Modus / Mikrofon</h3>
+                <button id="btn-start-mic">Start Mikrofon / Lyd</button>
+                <div id="status-display">Status: Klar...</div>
+                <div id="note-display">Note: --</div>
+            </div>
+
+            <!-- Separator -->
+            <hr class="divider">
+
+            <!-- Læringsmodus Kontroll -->
+            <div class="control-group">
+                <h3>Læringsmodus (Simon Says)</h3>
+                <p>1. Ta opp en melodi. 2. Spill den av. 3. Prøv å gjenta!</p>
+                
+                <button id="btn-record">⏺ Start Opptak</button>
+                <button id="btn-play-seq" disabled>▶️ Spill Fasit</button>
+                <button id="btn-challenge" disabled>🎮 Prøv Selv!</button>
+                
+                <div id="learning-status">Status: Ventet på opptak...</div>
+            </div>
         </section>
 
         <section id="piano-container">
@@ -39,4 +58,4 @@
     <script src="script.js"></script>
 </body>
 </html>
-<!-- Version: #6 -->
+<!-- Version: #8 -->
