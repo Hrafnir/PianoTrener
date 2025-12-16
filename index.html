@@ -1,10 +1,10 @@
-<!-- Version: #21 -->
+<!-- Version: #24 -->
 <!DOCTYPE html>
 <html lang="no">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Piano Lærer for Barn</title>
+    <title>Piano Lærer - Pro</title>
     <!-- VexFlow bibliotek (Stabil versjon 3.0.9) -->
     <script src="https://unpkg.com/vexflow@3.0.9/releases/vexflow-min.js"></script>
     <link rel="stylesheet" href="style.css">
@@ -14,49 +14,71 @@
     <div class="app-container">
         <header>
             <h1>Piano Lærer 🎹</h1>
-            <p>Spill, lær, og se ekte noter!</p>
+            <p>Spill, komponer og lær rytme!</p>
         </header>
 
         <section id="controls">
             <!-- Mikrofon Kontroll -->
             <div class="control-group">
                 <h3>Fri Modus / Mikrofon</h3>
-                <button id="btn-start-mic">Start Mikrofon / Lyd</button>
+                <button id="btn-start-mic">Start Mikrofon</button>
                 <div id="status-display">Status: Klar...</div>
                 <div id="note-display">Note: --</div>
             </div>
 
             <hr class="divider">
 
-            <!-- Tonelengde Kontroll (NY) -->
+            <!-- Musikk Kontroller (Ny) -->
             <div class="control-group">
-                <h3>Velg Tonelengde (Bruk tastatur 1, 2, 4, 8, 9)</h3>
+                <h3>Musikkinnstillinger</h3>
+                <div class="settings-row">
+                    <div class="setting-item">
+                        <label>Tempo (BPM):</label>
+                        <input type="number" id="bpm-input" value="100" min="40" max="240">
+                    </div>
+                    <div class="setting-item">
+                        <label>Taktart:</label>
+                        <select id="time-sig-input">
+                            <option value="4/4" selected>4/4</option>
+                            <option value="3/4">3/4</option>
+                            <option value="2/4">2/4</option>
+                            <option value="6/8">6/8</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label>Metronom:</label>
+                        <button id="btn-toggle-metronome" class="toggle-btn">Av</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tonelengde Kontroll -->
+            <div class="control-group">
+                <h3>Noteverdi & Pause (Tastatur: 1, 2, 4, 8, P)</h3>
                 <div id="duration-controls">
-                    <div class="duration-btn" data-dur="w" id="dur-1">1 Helnote</div>
-                    <div class="duration-btn" data-dur="h" id="dur-2">2 Halvnote</div>
-                    <div class="duration-btn active" data-dur="q" id="dur-4">4 Fjerdedel</div>
+                    <div class="duration-btn" data-dur="w" id="dur-1">1 Hel</div>
+                    <div class="duration-btn" data-dur="h" id="dur-2">2 Halv</div>
+                    <div class="duration-btn active" data-dur="q" id="dur-4">4 Fjerd.</div>
                     <div class="duration-btn" data-dur="8" id="dur-8">8 Åttedel</div>
-                    <div class="duration-btn" data-dur="16" id="dur-9">9 Sekstendel</div>
+                    <div class="duration-btn" data-dur="16" id="dur-9">16-del</div>
+                    <!-- Pauseknapp -->
+                    <div class="duration-btn rest-btn" id="btn-add-rest">⏸ Pause (P)</div>
                 </div>
             </div>
 
             <hr class="divider">
 
-            <!-- Læringsmodus Kontroll -->
+            <!-- Handlinger -->
             <div class="control-group">
-                <h3>Læring og Øving</h3>
-                
-                <!-- Hovedmeny knapper -->
                 <div id="main-controls" class="button-row">
                     <button id="btn-record">⏺ Start Opptak</button>
-                    <button id="btn-play-seq" disabled>▶️ Hør Fasit</button>
-                    <button id="btn-challenge" disabled>🎓 Start Øvelse</button>
-                    <button id="btn-clear-sheet" style="background-color: #6c757d;">🗑️ Tøm Noter</button>
-                    <!-- Ny knapp for lagring -->
-                    <button id="btn-download" style="background-color: #009688;">💾 Lagre Noteark</button>
+                    <button id="btn-play-seq" disabled>▶️ Spill Av</button>
+                    <button id="btn-challenge" disabled>🎓 Øvelse</button>
+                    <button id="btn-clear-sheet" style="background-color: #6c757d;">🗑️ Nytt Ark</button>
+                    <button id="btn-download" style="background-color: #009688;">💾 Lagre</button>
                 </div>
 
-                <!-- Øvingsmodus knapper (Vises kun under spill) -->
+                <!-- Øvingsmodus knapper -->
                 <div id="game-controls" class="button-row" style="display: none;">
                     <button id="btn-restart-game" style="background-color: #ff9800;">🔄 Start På Nytt</button>
                     <button id="btn-stop-game" style="background-color: #f44336;">❌ Avslutt Øving</button>
@@ -68,21 +90,20 @@
 
         <!-- Ekte Noteark -->
         <section id="sheet-container">
-            <h3>Noteark (G-Nøkkel):</h3>
+            <h3>Noteark (Juster størrelsen i hjørnet):</h3>
             <div id="sheet-music-scroll">
-                <!-- Her tegner VexFlow notene -->
                 <div id="vexflow-wrapper"></div>
             </div>
         </section>
 
         <section id="piano-container">
             <div class="piano" id="piano">
-                <!-- Tangentene genereres her ved oppstart -->
+                <!-- Tangenter -->
             </div>
         </section>
 
         <section id="logging-area">
-            <h3>System Logg:</h3>
+            <h3>Logg:</h3>
             <div id="app-log"></div>
         </section>
     </div>
@@ -90,4 +111,4 @@
     <script src="script.js"></script>
 </body>
 </html>
-<!-- Version: #21 -->
+<!-- Version: #24 -->
