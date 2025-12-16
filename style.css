@@ -1,4 +1,4 @@
-/* Version: #25 */
+/* Version: #27 */
 
 :root {
     --bg-color: #f0f2f5;
@@ -160,7 +160,7 @@ button:disabled {
 }
 
 .rest-btn {
-    background-color: #fff3cd; /* Gulaktig for pause */
+    background-color: #fff3cd; 
     border-color: #ffecb5;
 }
 .rest-btn:hover {
@@ -175,17 +175,14 @@ button:disabled {
 
 #sheet-music-scroll {
     width: 100%;
-    height: 300px; /* Start høyde */
+    height: 300px; 
     min-height: 150px;
     background: #fff; 
     border: 1px solid #ccc;
     border-radius: 5px;
-    
-    /* GJØR DEN JUSTERBAR I HØYDE */
     resize: vertical; 
-    overflow: auto; /* Må ha auto for at resize skal virke */
-
-    padding: 20px; /* Mer padding for multi-line */
+    overflow: auto; 
+    padding: 20px; 
     box-sizing: border-box;
     box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
 }
@@ -193,7 +190,6 @@ button:disabled {
 #vexflow-wrapper {
     display: block;
     width: 100%; 
-    /* Vi lar SVG fylle bredden */
 }
 
 /* --- PIANO STYLES --- */
@@ -201,10 +197,14 @@ button:disabled {
     display: flex;
     justify-content: flex-start;
     margin-bottom: 30px;
-    overflow-x: auto;
+    overflow-x: auto; /* Tillat scrolling */
     padding-bottom: 20px;
     border: 1px solid #ccc;
     background: #222;
+    
+    /* VIKTIG FOR IPAD SCROLLING */
+    -webkit-overflow-scrolling: touch; 
+    scroll-behavior: smooth; /* Mykere piltast-scroll */
 }
 
 .piano {
@@ -223,6 +223,8 @@ button:disabled {
     cursor: pointer;
     user-select: none;
     box-sizing: border-box;
+    /* Hindrer default "markering" på mobil, men vi håndterer touch events manuelt */
+    -webkit-tap-highlight-color: transparent;
 }
 
 .key.white {
@@ -311,4 +313,4 @@ button:disabled {
 @media (max-width: 600px) {
     .piano { height: 180px; }
 }
-/* Version: #25 */
+/* Version: #27 */
