@@ -1,4 +1,4 @@
-/* Version: #16 */
+/* Version: #18 */
 
 // === KONFIGURASJON ===
 const NOTE_STRINGS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -11,10 +11,8 @@ const MIC_STABILITY_THRESHOLD = 5;
 const SCROLL_SMOOTHING = 0.05; 
 const SCROLL_TRIGGER_MARGIN = 150; 
 
-// === VexFlow Setup ===
-const VF = Vex.Flow;
-
 // === GLOBALE VARIABLER ===
+let VF = null; // VexFlow snarvei (settes ved init)
 let audioContext = null;
 let analyser = null;
 let mediaStreamSource = null;
@@ -26,7 +24,7 @@ let currentActiveKey = null;
 const activeOscillators = new Map(); 
 
 // Variables for Transcription & Game
-let recordedSequence = []; // Lagrer noteId-strenger: ["C4", "E4", ...]
+let recordedSequence = []; 
 let isRecording = false;
 let isChallenging = false;
 let challengeIndex = 0;
@@ -66,16 +64,20 @@ const learningStatus = document.getElementById('learning-status');
 
 // === INIT ===
 window.onload = () => {
+    // SJEKKER AT VEXFLOW ER LASTET
+    if (typeof Vex === 'undefined') {
+        log("FEIL: VexFlow biblioteket ble ikke lastet riktig.");
+        return;
+    }
+    VF = Vex.Flow; // Initialiser VexFlow snarvei her
+
     generatePiano();
     
-    // Initial scroll setup
     pianoContainerWidth = pianoContainer.clientWidth;
     scrollToMiddleImmediate(); 
     
-    // Start den myke scroll-loopen
     requestAnimationFrame(updateScrollLoop);
     
-    // Setup VexFlow første gang (tomt)
     renderSheetMusic();
 
     updateButtonStates();
@@ -132,7 +134,6 @@ function generatePiano() {
             whiteKeyCount++;
         }
 
-        // EVENTS
         key.addEventListener('mousedown', (e) => {
             e.preventDefault(); 
             handleInput(noteId, frequency, true); 
@@ -188,10 +189,10 @@ function updateScrollLoop() {
 // === VEXFLOW SHEET MUSIC RENDERER ===
 
 function renderSheetMusic() {
-    // 1. Tøm containeren
+    if (!VF) return; // Sikkerhetsnett hvis VexFlow ikke lastet
+
     vexWrapper.innerHTML = '';
 
-    // Hvis ingen noter, tegn en tom stave
     if (recordedSequence.length === 0) {
         const renderer = new VF.Renderer(vexWrapper, VF.Renderer.Backends.SVG);
         renderer.resize(500, 150);
@@ -201,8 +202,6 @@ function renderSheetMusic() {
         return;
     }
 
-    // 2. Konfigurer Renderer
-    // Bredden må være dynamisk basert på antall noter
     const noteWidth = 40; 
     const totalWidth = Math.max(500, recordedSequence.length * noteWidth + 50);
     
@@ -210,53 +209,45 @@ function renderSheetMusic() {
     renderer.resize(totalWidth, 150);
     const context = renderer.getContext();
 
-    // 3. Lag Stave (Notelinjer)
     const stave = new VF.Stave(10, 40, totalWidth - 20);
     stave.addClef("treble");
     stave.setContext(context).draw();
 
-    // 4. Konverter recordedSequence til VexFlow Notes
     const notes = recordedSequence.map((noteId, index) => {
-        // noteId format: "C#4", "D4"
-        // VexFlow format keys: "c#/4", "d/4"
-        
-        // Parse note
         const regex = /([A-G])(#?)(-?\d+)/;
         const match = noteId.match(regex);
         
-        let vfKey = "c/4"; // fallback
+        let vfKey = "c/4"; 
         let accidental = "";
 
         if (match) {
             const letter = match[1].toLowerCase();
-            const acc = match[2]; // '#' or ''
+            const acc = match[2]; 
             const octave = match[3];
             vfKey = `${letter}${acc}/${octave}`;
             accidental = acc;
         }
 
-        // Lag note-objekt (Fjerdedelsnote som standard 'q')
         const staveNote = new VF.StaveNote({ 
             keys: [vfKey], 
             duration: "q",
             auto_stem: true 
         });
 
-        // Legg til kryss/b hvis nødvendig
         if (accidental) {
-            staveNote.addModifier(new VF.Accidental(accidental));
+            staveNote.addModifier(0, new VF.Accidental(accidental));
         }
 
-        // === FARGELEGGING (Game Logic) ===
+        // Fargelegging
         if (isChallenging) {
             if (index < challengeIndex) {
-                // Noter vi har spilt ferdig (Riktig) -> Grønn
+                // Riktig (Grønn)
                 staveNote.setStyle({fillStyle: "#4caf50", strokeStyle: "#4caf50"});
             } else if (index === challengeIndex) {
-                // Den vi skal spille nå -> Blå (eller svart for fokus)
+                // Aktiv (Blå)
                 staveNote.setStyle({fillStyle: "#2196f3", strokeStyle: "#2196f3"});
             } else {
-                // Fremtidige -> Svart
+                // Fremtid (Svart)
                 staveNote.setStyle({fillStyle: "black", strokeStyle: "black"});
             }
         }
@@ -264,22 +255,14 @@ function renderSheetMusic() {
         return staveNote;
     });
 
-    // 5. Tegn notene (Voice & Formatter)
-    // VexFlow trenger å vite hvor mye plass notene skal ha
-    // Vi deler opp i voices. Her bruker vi en enkel voice 4/4 selv om vi ikke har taktstreker
-    // For fri flyt, jukser vi litt med beat_value
-    
     const numBeats = notes.length;
     const voice = new VF.Voice({num_beats: numBeats, beat_value: 4});
     voice.addTickables(notes);
 
-    // Formatterer justerer avstand
     new VF.Formatter().joinVoices([voice]).format([voice], totalWidth - 50);
 
-    // Tegn
     voice.draw(context, stave);
     
-    // Auto-scroll VexFlow containeren til høyre hvis det blir langt
     const scrollArea = document.getElementById('sheet-music-scroll');
     scrollArea.scrollLeft = scrollArea.scrollWidth;
 }
@@ -292,12 +275,11 @@ function handleInput(noteId, frequency, isClick) {
         playTone(noteId, frequency);
     }
 
-    // Spill-logikk
     if (isRecording) {
         recordedSequence.push(noteId);
         log(`Tatt opp: ${noteId}`);
         learningStatus.innerText = `Tar opp... Antall noter: ${recordedSequence.length}`;
-        renderSheetMusic(); // Oppdater notearket live
+        renderSheetMusic(); 
         updateButtonStates();
     } 
     else if (isChallenging) {
@@ -329,10 +311,8 @@ function checkPlayerInput(noteId) {
     const keyElement = document.getElementById(`key-${noteId}`);
 
     if (noteId === expectedNote) {
-        // Riktig
         log(`Riktig! (${noteId})`);
         
-        // Visuell feedback (Grønn)
         if (keyElement) {
             keyElement.classList.add('correct');
             setTimeout(() => keyElement.classList.remove('correct'), 300);
@@ -340,23 +320,18 @@ function checkPlayerInput(noteId) {
 
         challengeIndex++;
         
-        // Oppdater noter (fargelegg grønt) og hint
         renderSheetMusic();
 
         if (challengeIndex >= recordedSequence.length) {
-            // Ferdig
             learningStatus.innerText = "🏆 HURRA! Du klarte det!";
             log("Utfordring fullført!");
             clearHints();
-            // Vi stopper ikke spillet automatisk, men lar brukeren nyte seieren
-            // eller trykke "Avslutt".
         } else {
             learningStatus.innerText = `Riktig! Neste: ${challengeIndex + 1} / ${recordedSequence.length}`;
             showNextHint();
         }
 
     } else {
-        // Feil
         log(`Feil note. Spilte ${noteId}, ventet ${expectedNote}`);
         if (keyElement) {
             keyElement.classList.add('wrong');
@@ -371,16 +346,14 @@ function checkPlayerInput(noteId) {
 // --- Main Menu ---
 btnRecord.addEventListener('click', () => {
     if (isRecording) {
-        // STOPP OPPTAK
         isRecording = false;
         learningStatus.innerText = `Opptak ferdig. ${recordedSequence.length} noter lagret.`;
         log("Stoppet opptak.");
     } else {
-        // START OPPTAK
-        recordedSequence = []; // Nullstill
+        recordedSequence = []; 
         isRecording = true;
         isChallenging = false; 
-        renderSheetMusic(); // Tøm noteark visuelt
+        renderSheetMusic(); 
         learningStatus.innerText = "🔴 TAR OPP! Spill noter nå...";
         log("Startet opptak.");
     }
@@ -393,17 +366,10 @@ btnPlaySeq.addEventListener('click', async () => {
     isPlayingSequence = true;
     updateButtonStates();
     learningStatus.innerText = "Spiller fasit...";
-    
-    // Slå av hints midlertidig hvis de er på
     clearHints();
 
     for (let i = 0; i < recordedSequence.length; i++) {
         const noteId = recordedSequence[i];
-        
-        // I "Play Seq" modus kan vi også highlighte noten i VexFlow (blå)
-        // ved å jukse litt med render, men vi holder det enkelt:
-        // Vi lar "Current Key" styre scroll og piano-lys.
-        
         await playDemoNote(noteId);
         await new Promise(r => setTimeout(r, 100)); 
     }
@@ -417,25 +383,23 @@ btnChallenge.addEventListener('click', () => {
     startChallengeMode();
 });
 
-// Tøm noteark (kun i hovedmeny)
-btnClearSheet.addEventListener('click', () => {
-    recordedSequence = [];
-    renderSheetMusic();
-    updateButtonStates();
-    log("Noter slettet.");
-});
-
-// --- Game Menu ---
 btnRestartGame.addEventListener('click', () => {
     log("Starter øvelse på nytt...");
     challengeIndex = 0;
-    renderSheetMusic(); // Nullstiller farger
-    showNextHint();     // Viser første hint igjen
+    renderSheetMusic();
+    showNextHint(); 
     learningStatus.innerText = "Startet på nytt. Spill den blå tangenten!";
 });
 
 btnStopGame.addEventListener('click', () => {
     stopChallengeMode();
+});
+
+btnClearSheet.addEventListener('click', () => {
+    recordedSequence = [];
+    renderSheetMusic();
+    updateButtonStates();
+    log("Noter slettet.");
 });
 
 
@@ -448,16 +412,14 @@ function startChallengeMode() {
     isRecording = false;
     challengeIndex = 0;
     
-    // Bytt knapper
     mainControls.style.display = 'none';
     gameControls.style.display = 'flex';
     
     learningStatus.innerText = "🎓 ØVELSE STARTET! Følg de blå hintene.";
     log("Startet øvelse.");
     
-    renderSheetMusic(); // Oppdaterer farger (blå første note)
-    showNextHint();     // Lyser opp tangent
-    
+    renderSheetMusic(); 
+    showNextHint();     
     updateButtonStates();
 }
 
@@ -466,23 +428,20 @@ function stopChallengeMode() {
     challengeIndex = 0;
     clearHints();
     
-    // Bytt knapper tilbake
     mainControls.style.display = 'flex';
     gameControls.style.display = 'none';
     
     learningStatus.innerText = "Øvelse avsluttet.";
     log("Avsluttet øvelse.");
     
-    renderSheetMusic(); // Tegner notene svart igjen
+    renderSheetMusic(); 
     updateButtonStates();
 }
 
 function updateButtonStates() {
-    // Record Button visuals
     btnRecord.innerText = isRecording ? "⏹ Stopp Opptak" : "⏺ Start Opptak";
     btnRecord.classList.toggle('active', isRecording);
 
-    // Disable logic
     btnRecord.disabled = isPlayingSequence || isChallenging;
     btnPlaySeq.disabled = isRecording || isPlayingSequence || isChallenging || recordedSequence.length === 0;
     btnChallenge.disabled = isRecording || isPlayingSequence || isChallenging || recordedSequence.length === 0;
@@ -563,7 +522,7 @@ function playDemoNote(noteId) {
         const key = document.getElementById(`key-${noteId}`);
         if (key) key.classList.add('active');
 
-        currentActiveKey = key; // For Smart Scroll
+        currentActiveKey = key; 
 
         setTimeout(() => {
             gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
@@ -723,4 +682,4 @@ function noteFromPitch(frequency) {
     return Math.round(noteNum) + 69;
 }
 
-/* Version: #16 */
+/* Version: #18 */
