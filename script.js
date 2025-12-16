@@ -1,4 +1,4 @@
-/* Version: #13 */
+/* Version: #16 */
 
 // === KONFIGURASJON ===
 const NOTE_STRINGS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -8,8 +8,11 @@ const BLACK_KEY_WIDTH = 24;
 const MIC_STABILITY_THRESHOLD = 5; 
 
 // Scroll config
-const SCROLL_SMOOTHING = 0.05; // Lavere tall = tregere/mykere bevegelse (0.01 - 0.1)
-const SCROLL_TRIGGER_MARGIN = 150; // Piksler fra kanten før vi begynner å scrolle
+const SCROLL_SMOOTHING = 0.05; 
+const SCROLL_TRIGGER_MARGIN = 150; 
+
+// === VexFlow Setup ===
+const VF = Vex.Flow;
 
 // === GLOBALE VARIABLER ===
 let audioContext = null;
@@ -22,11 +25,8 @@ let buf = new Float32Array(buflen);
 let currentActiveKey = null; 
 const activeOscillators = new Map(); 
 
-// Variables for Transcription
-const activeNoteStartTimes = new Map(); // Holder styr på når hver note startet { noteId: timestamp }
-
-// Variables for Game/Learning
-let recordedSequence = [];
+// Variables for Transcription & Game
+let recordedSequence = []; // Lagrer noteId-strenger: ["C4", "E4", ...]
 let isRecording = false;
 let isChallenging = false;
 let challengeIndex = 0;
@@ -50,13 +50,18 @@ const pianoContainer = document.getElementById('piano-container');
 const pianoInner = document.getElementById('piano');
 
 // Sheet Music Elements
-const sheetMusicContent = document.getElementById('sheet-music-content');
+const vexWrapper = document.getElementById('vexflow-wrapper');
 const btnClearSheet = document.getElementById('btn-clear-sheet');
 
 // Game Controls
+const mainControls = document.getElementById('main-controls');
+const gameControls = document.getElementById('game-controls');
+
 const btnRecord = document.getElementById('btn-record');
 const btnPlaySeq = document.getElementById('btn-play-seq');
 const btnChallenge = document.getElementById('btn-challenge');
+const btnRestartGame = document.getElementById('btn-restart-game');
+const btnStopGame = document.getElementById('btn-stop-game');
 const learningStatus = document.getElementById('learning-status');
 
 // === INIT ===
@@ -65,16 +70,18 @@ window.onload = () => {
     
     // Initial scroll setup
     pianoContainerWidth = pianoContainer.clientWidth;
-    scrollToMiddleImmediate(); // Start i midten
+    scrollToMiddleImmediate(); 
     
     // Start den myke scroll-loopen
     requestAnimationFrame(updateScrollLoop);
     
+    // Setup VexFlow første gang (tomt)
+    renderSheetMusic();
+
     updateButtonStates();
-    log("Applikasjon lastet. Klar.");
+    log("Applikasjon lastet. VexFlow klar.");
 };
 
-// Oppdater bredde ved resize
 window.onresize = () => {
     pianoContainerWidth = pianoContainer.clientWidth;
 };
@@ -89,7 +96,7 @@ function log(message) {
     logContainer.scrollTop = logContainer.scrollHeight;
 }
 
-// === HJELPEFUNKSJON FOR AUDIO CONTEXT ===
+// === AUDIO CONTEXT ===
 function ensureAudioContext() {
     if (!audioContext) {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -125,7 +132,7 @@ function generatePiano() {
             whiteKeyCount++;
         }
 
-        // MOUSE / TOUCH EVENTS
+        // EVENTS
         key.addEventListener('mousedown', (e) => {
             e.preventDefault(); 
             handleInput(noteId, frequency, true); 
@@ -144,108 +151,138 @@ function generatePiano() {
 }
 
 // === SMART SCROLL LOGIC ===
-
 function scrollToMiddleImmediate() {
     const middleC = document.getElementById('key-C4');
     if (middleC) {
         const centerPos = middleC.offsetLeft - (pianoContainerWidth / 2) + (WHITE_KEY_WIDTH / 2);
         pianoContainer.scrollLeft = centerPos;
-        targetScrollPos = centerPos; // Sync target
+        targetScrollPos = centerPos; 
     }
 }
 
-// Denne kjører hver frame for å gi myk bevegelse
 function updateScrollLoop() {
-    // 1. Sjekk om vi trenger å oppdatere target basert på aktiv nøkkel
     if (currentActiveKey) {
         const keyLeft = currentActiveKey.offsetLeft;
         const keyWidth = currentActiveKey.classList.contains('black') ? BLACK_KEY_WIDTH : WHITE_KEY_WIDTH;
         const keyCenter = keyLeft + (keyWidth / 2);
-        
-        // Hvor er nøkkelen i forhold til hva vi ser akkurat nå?
         const relativePos = keyCenter - pianoContainer.scrollLeft;
 
-        // Er vi nær venstre kant?
         if (relativePos < SCROLL_TRIGGER_MARGIN) {
-            // Mål: Sentrer nøkkelen
             targetScrollPos = keyCenter - (pianoContainerWidth / 2);
         }
-        // Er vi nær høyre kant?
         else if (relativePos > (pianoContainerWidth - SCROLL_TRIGGER_MARGIN)) {
-            // Mål: Sentrer nøkkelen
             targetScrollPos = keyCenter - (pianoContainerWidth / 2);
         }
     }
 
-    // 2. Utfør selve bevegelsen (Linear Interpolation)
-    // Sjekk diff
     const currentScroll = pianoContainer.scrollLeft;
     const diff = targetScrollPos - currentScroll;
 
-    // Hvis diffen er stor nok til å bry seg om
     if (Math.abs(diff) > 1) {
-        // Flytt 5% av avstanden (SCROLL_SMOOTHING) per frame
         pianoContainer.scrollLeft = currentScroll + (diff * SCROLL_SMOOTHING);
     }
 
     requestAnimationFrame(updateScrollLoop);
 }
 
+// === VEXFLOW SHEET MUSIC RENDERER ===
 
-// === SHEET MUSIC / TRANSKRIPSJON ===
+function renderSheetMusic() {
+    // 1. Tøm containeren
+    vexWrapper.innerHTML = '';
 
-function recordNoteStart(noteId) {
-    // Hvis noten allerede er aktiv (f.eks. ved raske trykk), oppdaterer vi ikke starttiden
-    // slik at vi får én lang blokk i stedet for flimring, eller vi avslutter forrige?
-    // La oss si: Nytt trykk = ny note.
-    if (activeNoteStartTimes.has(noteId)) {
-        // Avslutt forrige før vi starter ny (sikkerhetsnett)
-        recordNoteEnd(noteId); 
+    // Hvis ingen noter, tegn en tom stave
+    if (recordedSequence.length === 0) {
+        const renderer = new VF.Renderer(vexWrapper, VF.Renderer.Backends.SVG);
+        renderer.resize(500, 150);
+        const context = renderer.getContext();
+        const stave = new VF.Stave(10, 40, 400);
+        stave.addClef("treble").setContext(context).draw();
+        return;
     }
-    activeNoteStartTimes.set(noteId, Date.now());
-}
 
-function recordNoteEnd(noteId) {
-    if (!activeNoteStartTimes.has(noteId)) return;
-
-    const startTime = activeNoteStartTimes.get(noteId);
-    const endTime = Date.now();
-    const duration = endTime - startTime;
-    activeNoteStartTimes.delete(noteId);
-
-    // Filterer ut ekstremt korte "glitch" trykk (under 50ms)
-    if (duration < 50) return;
-
-    createNoteBlock(noteId, duration);
-}
-
-function createNoteBlock(noteId, duration) {
-    const block = document.createElement('div');
-    block.className = 'note-block';
-    block.innerText = noteId;
+    // 2. Konfigurer Renderer
+    // Bredden må være dynamisk basert på antall noter
+    const noteWidth = 40; 
+    const totalWidth = Math.max(500, recordedSequence.length * noteWidth + 50);
     
-    // Beregn bredde. F.eks. 100ms = 20px. 
-    // Juster faktor (0.2) etter hvor raskt "papiret" skal gå
-    let width = duration * 0.1; 
-    if (width < 30) width = 30; // Minste bredde for lesbarhet
-    
-    block.style.width = `${width}px`;
+    const renderer = new VF.Renderer(vexWrapper, VF.Renderer.Backends.SVG);
+    renderer.resize(totalWidth, 150);
+    const context = renderer.getContext();
 
-    // Fargekode basert på om det er svart/hvit tangent? Eller bare en standard farge.
-    // Vi bruker CSS standard, men kan legge til custom style hvis ønskelig.
+    // 3. Lag Stave (Notelinjer)
+    const stave = new VF.Stave(10, 40, totalWidth - 20);
+    stave.addClef("treble");
+    stave.setContext(context).draw();
+
+    // 4. Konverter recordedSequence til VexFlow Notes
+    const notes = recordedSequence.map((noteId, index) => {
+        // noteId format: "C#4", "D4"
+        // VexFlow format keys: "c#/4", "d/4"
+        
+        // Parse note
+        const regex = /([A-G])(#?)(-?\d+)/;
+        const match = noteId.match(regex);
+        
+        let vfKey = "c/4"; // fallback
+        let accidental = "";
+
+        if (match) {
+            const letter = match[1].toLowerCase();
+            const acc = match[2]; // '#' or ''
+            const octave = match[3];
+            vfKey = `${letter}${acc}/${octave}`;
+            accidental = acc;
+        }
+
+        // Lag note-objekt (Fjerdedelsnote som standard 'q')
+        const staveNote = new VF.StaveNote({ 
+            keys: [vfKey], 
+            duration: "q",
+            auto_stem: true 
+        });
+
+        // Legg til kryss/b hvis nødvendig
+        if (accidental) {
+            staveNote.addModifier(new VF.Accidental(accidental));
+        }
+
+        // === FARGELEGGING (Game Logic) ===
+        if (isChallenging) {
+            if (index < challengeIndex) {
+                // Noter vi har spilt ferdig (Riktig) -> Grønn
+                staveNote.setStyle({fillStyle: "#4caf50", strokeStyle: "#4caf50"});
+            } else if (index === challengeIndex) {
+                // Den vi skal spille nå -> Blå (eller svart for fokus)
+                staveNote.setStyle({fillStyle: "#2196f3", strokeStyle: "#2196f3"});
+            } else {
+                // Fremtidige -> Svart
+                staveNote.setStyle({fillStyle: "black", strokeStyle: "black"});
+            }
+        }
+
+        return staveNote;
+    });
+
+    // 5. Tegn notene (Voice & Formatter)
+    // VexFlow trenger å vite hvor mye plass notene skal ha
+    // Vi deler opp i voices. Her bruker vi en enkel voice 4/4 selv om vi ikke har taktstreker
+    // For fri flyt, jukser vi litt med beat_value
     
-    sheetMusicContent.appendChild(block);
+    const numBeats = notes.length;
+    const voice = new VF.Voice({num_beats: numBeats, beat_value: 4});
+    voice.addTickables(notes);
+
+    // Formatterer justerer avstand
+    new VF.Formatter().joinVoices([voice]).format([voice], totalWidth - 50);
+
+    // Tegn
+    voice.draw(context, stave);
     
-    // Auto-scroll notearket til slutten
+    // Auto-scroll VexFlow containeren til høyre hvis det blir langt
     const scrollArea = document.getElementById('sheet-music-scroll');
     scrollArea.scrollLeft = scrollArea.scrollWidth;
 }
-
-// Tøm noteark
-btnClearSheet.addEventListener('click', () => {
-    sheetMusicContent.innerHTML = '';
-    log("Noteark tømt.");
-});
 
 
 // === GAME LOGIC & INPUT HANDLING ===
@@ -260,10 +297,28 @@ function handleInput(noteId, frequency, isClick) {
         recordedSequence.push(noteId);
         log(`Tatt opp: ${noteId}`);
         learningStatus.innerText = `Tar opp... Antall noter: ${recordedSequence.length}`;
+        renderSheetMusic(); // Oppdater notearket live
         updateButtonStates();
     } 
     else if (isChallenging) {
         checkPlayerInput(noteId);
+    }
+}
+
+// === HINT SYSTEM ===
+function clearHints() {
+    const allKeys = document.querySelectorAll('.key');
+    allKeys.forEach(k => k.classList.remove('hint'));
+}
+
+function showNextHint() {
+    clearHints();
+    if (challengeIndex < recordedSequence.length) {
+        const nextNoteId = recordedSequence[challengeIndex];
+        const keyElement = document.getElementById(`key-${nextNoteId}`);
+        if (keyElement) {
+            keyElement.classList.add('hint');
+        }
     }
 }
 
@@ -274,24 +329,34 @@ function checkPlayerInput(noteId) {
     const keyElement = document.getElementById(`key-${noteId}`);
 
     if (noteId === expectedNote) {
+        // Riktig
         log(`Riktig! (${noteId})`);
-        challengeIndex++;
         
+        // Visuell feedback (Grønn)
         if (keyElement) {
             keyElement.classList.add('correct');
             setTimeout(() => keyElement.classList.remove('correct'), 300);
         }
 
+        challengeIndex++;
+        
+        // Oppdater noter (fargelegg grønt) og hint
+        renderSheetMusic();
+
         if (challengeIndex >= recordedSequence.length) {
+            // Ferdig
             learningStatus.innerText = "🏆 HURRA! Du klarte det!";
             log("Utfordring fullført!");
-            isChallenging = false;
-            updateButtonStates();
+            clearHints();
+            // Vi stopper ikke spillet automatisk, men lar brukeren nyte seieren
+            // eller trykke "Avslutt".
         } else {
-            learningStatus.innerText = `Riktig! Neste note: ${challengeIndex + 1} av ${recordedSequence.length}`;
+            learningStatus.innerText = `Riktig! Neste: ${challengeIndex + 1} / ${recordedSequence.length}`;
+            showNextHint();
         }
 
     } else {
+        // Feil
         log(`Feil note. Spilte ${noteId}, ventet ${expectedNote}`);
         if (keyElement) {
             keyElement.classList.add('wrong');
@@ -303,15 +368,19 @@ function checkPlayerInput(noteId) {
 
 // === BUTTON EVENTS ===
 
+// --- Main Menu ---
 btnRecord.addEventListener('click', () => {
     if (isRecording) {
+        // STOPP OPPTAK
         isRecording = false;
         learningStatus.innerText = `Opptak ferdig. ${recordedSequence.length} noter lagret.`;
         log("Stoppet opptak.");
     } else {
-        recordedSequence = [];
+        // START OPPTAK
+        recordedSequence = []; // Nullstill
         isRecording = true;
         isChallenging = false; 
+        renderSheetMusic(); // Tøm noteark visuelt
         learningStatus.innerText = "🔴 TAR OPP! Spill noter nå...";
         log("Startet opptak.");
     }
@@ -324,38 +393,102 @@ btnPlaySeq.addEventListener('click', async () => {
     isPlayingSequence = true;
     updateButtonStates();
     learningStatus.innerText = "Spiller fasit...";
-    log("Spiller av lagret sekvens...");
+    
+    // Slå av hints midlertidig hvis de er på
+    clearHints();
 
     for (let i = 0; i < recordedSequence.length; i++) {
         const noteId = recordedSequence[i];
+        
+        // I "Play Seq" modus kan vi også highlighte noten i VexFlow (blå)
+        // ved å jukse litt med render, men vi holder det enkelt:
+        // Vi lar "Current Key" styre scroll og piano-lys.
+        
         await playDemoNote(noteId);
         await new Promise(r => setTimeout(r, 100)); 
     }
 
     isPlayingSequence = false;
     learningStatus.innerText = "Ferdig spilt. Din tur?";
-    log("Avspilling ferdig.");
     updateButtonStates();
 });
 
 btnChallenge.addEventListener('click', () => {
+    startChallengeMode();
+});
+
+// Tøm noteark (kun i hovedmeny)
+btnClearSheet.addEventListener('click', () => {
+    recordedSequence = [];
+    renderSheetMusic();
+    updateButtonStates();
+    log("Noter slettet.");
+});
+
+// --- Game Menu ---
+btnRestartGame.addEventListener('click', () => {
+    log("Starter øvelse på nytt...");
+    challengeIndex = 0;
+    renderSheetMusic(); // Nullstiller farger
+    showNextHint();     // Viser første hint igjen
+    learningStatus.innerText = "Startet på nytt. Spill den blå tangenten!";
+});
+
+btnStopGame.addEventListener('click', () => {
+    stopChallengeMode();
+});
+
+
+// === MODE SWITCHING HELPERS ===
+
+function startChallengeMode() {
     if (recordedSequence.length === 0) return;
+    
     isChallenging = true;
     isRecording = false;
     challengeIndex = 0;
-    learningStatus.innerText = "🎮 PRØV SELV! Spill første tone...";
-    log("Startet utfordring.");
+    
+    // Bytt knapper
+    mainControls.style.display = 'none';
+    gameControls.style.display = 'flex';
+    
+    learningStatus.innerText = "🎓 ØVELSE STARTET! Følg de blå hintene.";
+    log("Startet øvelse.");
+    
+    renderSheetMusic(); // Oppdaterer farger (blå første note)
+    showNextHint();     // Lyser opp tangent
+    
     updateButtonStates();
-});
+}
+
+function stopChallengeMode() {
+    isChallenging = false;
+    challengeIndex = 0;
+    clearHints();
+    
+    // Bytt knapper tilbake
+    mainControls.style.display = 'flex';
+    gameControls.style.display = 'none';
+    
+    learningStatus.innerText = "Øvelse avsluttet.";
+    log("Avsluttet øvelse.");
+    
+    renderSheetMusic(); // Tegner notene svart igjen
+    updateButtonStates();
+}
 
 function updateButtonStates() {
-    btnRecord.innerText = isRecording ? "⏹ Stopp Opptak" : "⏺ Start Opptak (Simon)";
+    // Record Button visuals
+    btnRecord.innerText = isRecording ? "⏹ Stopp Opptak" : "⏺ Start Opptak";
     btnRecord.classList.toggle('active', isRecording);
 
+    // Disable logic
     btnRecord.disabled = isPlayingSequence || isChallenging;
     btnPlaySeq.disabled = isRecording || isPlayingSequence || isChallenging || recordedSequence.length === 0;
     btnChallenge.disabled = isRecording || isPlayingSequence || isChallenging || recordedSequence.length === 0;
+    btnClearSheet.disabled = isRecording || isChallenging;
 }
+
 
 // === LYDGENERERING (SYNTH) ===
 
@@ -379,15 +512,9 @@ function playTone(noteId, frequency) {
 
     const key = document.getElementById(`key-${noteId}`);
     if (key) key.classList.add('active');
-    
-    // TRANSKRIPSJON START
-    recordNoteStart(noteId);
 }
 
 function stopTone(noteId) {
-    // TRANSKRIPSJON STOP
-    recordNoteEnd(noteId);
-
     if (!activeOscillators.has(noteId)) return;
     const { osc, gainNode } = activeOscillators.get(noteId);
     const ctx = audioContext;
@@ -422,9 +549,6 @@ function playDemoNote(noteId) {
         const midi = (octave + 1) * 12 + noteIndex;
         const freq = 440 * Math.pow(2, (midi - 69) / 12);
 
-        // TRANSKRIPSJON FOR DEMO (Valgfritt, kommenter ut recordNoteStart/End hvis du ikke vil ha fasit på arket)
-        recordNoteStart(noteId);
-
         const ctx = ensureAudioContext();
         const osc = ctx.createOscillator();
         const gainNode = ctx.createGain();
@@ -439,19 +563,14 @@ function playDemoNote(noteId) {
         const key = document.getElementById(`key-${noteId}`);
         if (key) key.classList.add('active');
 
-        // Sett global aktiv key for at scrollen skal følge med på demoen også!
-        currentActiveKey = key;
+        currentActiveKey = key; // For Smart Scroll
 
         setTimeout(() => {
             gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
             osc.stop(ctx.currentTime + 0.1);
             if (key) key.classList.remove('active');
-            
-            // TRANSKRIPSJON SLUTT FOR DEMO
-            recordNoteEnd(noteId);
-            
             resolve();
-        }, 500); // Demo varighet 500ms
+        }, 500); 
     });
 }
 
@@ -468,7 +587,7 @@ function toggleMicrophone() {
         lastRegisteredNote = null;
         const keys = document.querySelectorAll('.key');
         keys.forEach(k => k.classList.remove('active'));
-        currentActiveKey = null; // Stopp scroll
+        currentActiveKey = null; 
     } else {
         startPitchDetect();
     }
@@ -510,18 +629,9 @@ function updatePitch() {
         micStableFrames = 0;
         micPendingNote = null;
         if (currentActiveKey && !activeOscillators.size) { 
-            // Fjern visuell markering ved stillhet (hvis ikke brukeren klikker med musa)
             currentActiveKey.classList.remove('active');
             currentActiveKey = null;
         }
-        // Vi bør kanskje kalle recordNoteEnd her hvis mic ble stille?
-        // Siden vi ikke har noteId her enkelt tilgjengelig, er det litt tricky.
-        // Løsning: Lagre lastVisualizedNote og stopp den.
-        if (lastRegisteredNote) {
-            recordNoteEnd(lastRegisteredNote);
-            lastRegisteredNote = null;
-        }
-
     } else {
         const note = noteFromPitch(ac);
         const noteName = NOTE_STRINGS[note % 12];
@@ -537,34 +647,19 @@ function updatePitch() {
             micStableFrames = 0;
         }
 
-        // Visuelt og Transkripsjon via mic
         const keyElement = document.getElementById(`key-${noteId}`);
         if (keyElement) {
-            
-            // Oppdater Active Key for Scroll og Highlight
             if (currentActiveKey && currentActiveKey !== keyElement) {
                 currentActiveKey.classList.remove('active');
-                // Hvis noten byttet, avslutt forrige for transkripsjon
-                if (lastRegisteredNote && lastRegisteredNote !== noteId) {
-                    recordNoteEnd(lastRegisteredNote);
-                }
             }
             keyElement.classList.add('active');
             currentActiveKey = keyElement;
-
-            // Transkripsjon start (kun hvis vi ikke allerede tracker denne noten)
-            if (!activeNoteStartTimes.has(noteId)) {
-                recordNoteStart(noteId);
-                lastRegisteredNote = noteId;
-            }
         }
 
-        // Spillinput (krever mer stabilitet)
         if (micStableFrames > MIC_STABILITY_THRESHOLD) {
-             // Logic handled above mostly, input trigger could be separate
              if (noteId !== lastRegisteredNote) {
-                 // Denne blokken kjører kun ved *endring* etter stabil tone
                  handleInput(noteId, ac, false); 
+                 lastRegisteredNote = noteId;
              }
         }
     }
@@ -628,4 +723,4 @@ function noteFromPitch(frequency) {
     return Math.round(noteNum) + 69;
 }
 
-/* Version: #13 */
+/* Version: #16 */
