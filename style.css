@@ -1,4 +1,4 @@
-/* Version: #22 */
+/* Version: #25 */
 
 :root {
     --bg-color: #f0f2f5;
@@ -49,7 +49,7 @@ header {
 }
 
 .control-group {
-    margin-bottom: 10px;
+    margin-bottom: 15px;
 }
 
 .button-row {
@@ -69,10 +69,37 @@ header {
     border: 0;
     height: 1px;
     background: #ccc;
-    margin: 20px 0;
+    margin: 15px 0;
 }
 
-/* --- KNAPPER --- */
+/* --- SETTINGS ROW (BPM etc) --- */
+.settings-row {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.setting-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.setting-item label {
+    font-size: 0.85em;
+    margin-bottom: 3px;
+    font-weight: bold;
+}
+
+.setting-item input, .setting-item select {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1em;
+    width: 80px;
+}
+
+/* --- BUTTONS --- */
 button {
     background-color: #007bff;
     color: white;
@@ -98,7 +125,15 @@ button:disabled {
 #btn-record { background-color: #d9534f; }
 #btn-challenge { background-color: #4caf50; } 
 
-/* --- TONELENGDE KONTROLLER --- */
+.toggle-btn {
+    background-color: #6c757d;
+    width: 60px;
+}
+.toggle-btn.on {
+    background-color: #4caf50;
+}
+
+/* --- DURATION CONTROLS --- */
 #duration-controls {
     display: flex;
     gap: 10px;
@@ -124,6 +159,14 @@ button:disabled {
     transform: scale(1.05);
 }
 
+.rest-btn {
+    background-color: #fff3cd; /* Gulaktig for pause */
+    border-color: #ffecb5;
+}
+.rest-btn:hover {
+    background-color: #ffe69c;
+}
+
 /* --- SHEET MUSIC (VexFlow) --- */
 #sheet-container {
     margin-bottom: 20px;
@@ -132,22 +175,25 @@ button:disabled {
 
 #sheet-music-scroll {
     width: 100%;
-    height: 220px;
+    height: 300px; /* Start høyde */
+    min-height: 150px;
     background: #fff; 
     border: 1px solid #ccc;
     border-radius: 5px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding: 10px;
+    
+    /* GJØR DEN JUSTERBAR I HØYDE */
+    resize: vertical; 
+    overflow: auto; /* Må ha auto for at resize skal virke */
+
+    padding: 20px; /* Mer padding for multi-line */
     box-sizing: border-box;
-    display: flex;
-    align-items: center; 
     box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
 }
 
 #vexflow-wrapper {
     display: block;
-    min-width: 100%; 
+    width: 100%; 
+    /* Vi lar SVG fylle bredden */
 }
 
 /* --- PIANO STYLES --- */
@@ -159,20 +205,6 @@ button:disabled {
     padding-bottom: 20px;
     border: 1px solid #ccc;
     background: #222;
-}
-
-#piano-container::-webkit-scrollbar {
-    height: 12px;
-}
-#piano-container::-webkit-scrollbar-track {
-    background: #333;
-}
-#piano-container::-webkit-scrollbar-thumb {
-    background: #555;
-    border-radius: 6px;
-}
-#piano-container::-webkit-scrollbar-thumb:hover {
-    background: #888;
 }
 
 .piano {
@@ -189,7 +221,6 @@ button:disabled {
 .key {
     border-radius: 0 0 5px 5px;
     cursor: pointer;
-    transition: background 0.05s, transform 0.05s;
     user-select: none;
     box-sizing: border-box;
 }
@@ -202,7 +233,6 @@ button:disabled {
     border-top: none;
     height: 100%;
     z-index: 1;
-    margin: 0;
 }
 
 .key.black {
@@ -216,32 +246,19 @@ button:disabled {
     box-shadow: 2px 2px 2px rgba(0,0,0,0.3);
 }
 
-/* INTERAKTIVE TILSTANDER */
 .key.white:active, .key.white.active {
     background: var(--active-color);
     transform: scale(0.98);
-    box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
 }
 .key.black:active, .key.black.active {
     background: #b8860b;
     transform: scale(0.98);
 }
 
-/* Feedback under øving */
-.key.correct {
-    background-color: var(--correct-color) !important;
-}
-.key.wrong {
-    background-color: var(--wrong-color) !important;
-}
-
-/* HINT */
-.key.hint {
-    background-color: var(--hint-color) !important;
-}
-.key.black.hint {
-    background-color: #1976d2 !important; 
-}
+.key.correct { background-color: var(--correct-color) !important; }
+.key.wrong { background-color: var(--wrong-color) !important; }
+.key.hint { background-color: var(--hint-color) !important; }
+.key.black.hint { background-color: #1976d2 !important; }
 
 /* --- LOGGING AREA --- */
 #logging-area {
@@ -278,9 +295,20 @@ button:disabled {
     margin-right: 15px;
 }
 
-@media (max-width: 600px) {
-    .piano {
-        height: 180px;
-    }
+/* Scrollbar styling */
+#piano-container::-webkit-scrollbar, #sheet-music-scroll::-webkit-scrollbar {
+    height: 12px;
+    width: 12px;
 }
-/* Version: #22 */
+#piano-container::-webkit-scrollbar-track, #sheet-music-scroll::-webkit-scrollbar-track {
+    background: #333;
+}
+#piano-container::-webkit-scrollbar-thumb, #sheet-music-scroll::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 6px;
+}
+
+@media (max-width: 600px) {
+    .piano { height: 180px; }
+}
+/* Version: #25 */
