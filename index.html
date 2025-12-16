@@ -1,4 +1,4 @@
-<!-- Version: #8 -->
+<!-- Version: #11 -->
 <!DOCTYPE html>
 <html lang="no">
 <head>
@@ -12,7 +12,7 @@
     <div class="app-container">
         <header>
             <h1>Piano Lærer 🎹</h1>
-            <p>Spill en tone eller syng, og se den på pianoet!</p>
+            <p>Spill, lær, og se notene dine bli skrevet ned!</p>
         </header>
 
         <section id="controls">
@@ -24,19 +24,30 @@
                 <div id="note-display">Note: --</div>
             </div>
 
-            <!-- Separator -->
             <hr class="divider">
 
             <!-- Læringsmodus Kontroll -->
             <div class="control-group">
-                <h3>Læringsmodus (Simon Says)</h3>
-                <p>1. Ta opp en melodi. 2. Spill den av. 3. Prøv å gjenta!</p>
-                
-                <button id="btn-record">⏺ Start Opptak</button>
-                <button id="btn-play-seq" disabled>▶️ Spill Fasit</button>
-                <button id="btn-challenge" disabled>🎮 Prøv Selv!</button>
+                <h3>Læring og Transkripsjon</h3>
+                <div class="button-row">
+                    <button id="btn-record">⏺ Start Opptak (Simon)</button>
+                    <button id="btn-play-seq" disabled>▶️ Spill Fasit</button>
+                    <button id="btn-challenge" disabled>🎮 Prøv Selv!</button>
+                    <!-- Ny knapp for å tømme notearket -->
+                    <button id="btn-clear-sheet" style="background-color: #6c757d;">🗑️ Tøm Noteark</button>
+                </div>
                 
                 <div id="learning-status">Status: Ventet på opptak...</div>
+            </div>
+        </section>
+
+        <!-- NY SEKSJON: Noteark / Transkripsjon -->
+        <section id="sheet-container">
+            <h3>Ditt Noteark:</h3>
+            <div id="sheet-music-scroll">
+                <div id="sheet-music-content">
+                    <!-- Noteblokker (transkripsjon) genereres her av JS -->
+                </div>
             </div>
         </section>
 
@@ -58,4 +69,4 @@
     <script src="script.js"></script>
 </body>
 </html>
-<!-- Version: #8 -->
+<!-- Version: #11 -->
