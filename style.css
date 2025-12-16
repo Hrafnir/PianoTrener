@@ -1,0 +1,168 @@
+/* Version: #3 */
+
+:root {
+    --bg-color: #f0f2f5;
+    --text-color: #333;
+    --piano-bg: #333;
+    --white-key-color: #fff;
+    --black-key-color: #000;
+    --active-color: #ffd700; /* Gullfarge for aktiv note */
+    --correct-color: #4caf50; /* Grønn for riktig i spill */
+    --wrong-color: #f44336; /* Rød for feil i spill */
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.app-container {
+    width: 100%;
+    max-width: 800px;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+header {
+    margin-bottom: 20px;
+}
+
+#controls {
+    margin-bottom: 30px;
+    padding: 10px;
+    background: #e9ecef;
+    border-radius: 8px;
+}
+
+button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+#status-display, #note-display {
+    margin-top: 10px;
+    font-weight: bold;
+    font-size: 1.2em;
+}
+
+/* --- PIANO STYLES --- */
+#piano-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 30px;
+    overflow-x: auto; /* I tilfelle liten skjerm */
+}
+
+.piano {
+    position: relative;
+    height: 250px;
+    width: 100%;
+    max-width: 700px;
+    background: var(--piano-bg);
+    padding: 10px 10px 0 10px; /* Ramme rundt */
+    border-radius: 5px;
+    display: flex; /* Flexboks for hvite tangenter */
+}
+
+.key {
+    border-radius: 0 0 5px 5px;
+    cursor: pointer;
+    transition: background 0.1s, transform 0.1s;
+    user-select: none;
+}
+
+.key.white {
+    flex: 1; /* Fordeler plassen likt (8 hvite tangenter = 12.5% hver) */
+    background: var(--white-key-color);
+    border: 1px solid #ccc;
+    height: 100%;
+    z-index: 1;
+    margin: 0 1px;
+}
+
+.key.white:active, .key.white.active {
+    background: var(--active-color);
+    transform: scale(0.98);
+}
+
+.key.black {
+    position: absolute;
+    top: 10px; /* Juster etter padding på piano-container */
+    height: 60%;
+    width: 8%; /* Smalere enn hvite */
+    background: var(--black-key-color);
+    z-index: 2;
+    border-radius: 0 0 3px 3px;
+    box-shadow: 2px 2px 2px rgba(0,0,0,0.3);
+}
+
+.key.black:active, .key.black.active {
+    background: #b8860b; /* Mørkere gull */
+    transform: scale(0.98);
+}
+
+/* Posisjonering av svarte tangenter 
+   Basert på 8 hvite tangenter. Hver hvit er 12.5%.
+   Senterlinjer er ved: 12.5%, 25%, 37.5%, 50%, 62.5%, 75%, 87.5%
+   Vi justerer left % for å treffe mellomrommene.
+*/
+
+#key-C\#4 { left: 10%; }  /* Mellom C og D (12.5% grense) */
+#key-D\#4 { left: 22.5%; } /* Mellom D og E (25% grense) */
+/* Ingen svart mellom E og F (37.5%) */
+#key-F\#4 { left: 47.5%; } /* Mellom F og G (50% grense) */
+#key-G\#4 { left: 60%; }   /* Mellom G og A (62.5% grense) */
+#key-A\#4 { left: 72.5%; } /* Mellom A og B (75% grense) */
+
+/* --- LOGGING AREA --- */
+#logging-area {
+    text-align: left;
+    border-top: 2px solid #eee;
+    padding-top: 10px;
+}
+
+#app-log {
+    background: #222;
+    color: #0f0;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 12px;
+    height: 150px;
+    overflow-y: scroll;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.log-entry {
+    border-bottom: 1px solid #444;
+    padding: 2px 0;
+}
+.log-time {
+    color: #888;
+    margin-right: 5px;
+}
+
+/* Responsiv justering */
+@media (max-width: 600px) {
+    .piano {
+        height: 180px;
+    }
+}
+/* Version: #3 */
