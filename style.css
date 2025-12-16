@@ -1,4 +1,4 @@
-/* Version: #19 */
+/* Version: #22 */
 
 :root {
     --bg-color: #f0f2f5;
@@ -6,12 +6,11 @@
     --piano-bg: #333;
     --white-key-color: #fff;
     --black-key-color: #000;
-    --active-color: #ffd700; /* Gullfarge for aktiv note (spiller nå) */
-    --hint-color: #2196f3;   /* Blå for "neste note" hint */
-    --correct-color: #4caf50; /* Grønn for riktig */
-    --wrong-color: #f44336;   /* Rød for feil */
+    --active-color: #ffd700;
+    --hint-color: #2196f3;
+    --correct-color: #4caf50;
+    --wrong-color: #f44336;
     
-    /* Dimensjoner */
     --white-key-width: 40px;
     --black-key-width: 24px;
     --piano-height: 250px;
@@ -73,6 +72,7 @@ header {
     margin: 20px 0;
 }
 
+/* --- KNAPPER --- */
 button {
     background-color: #007bff;
     color: white;
@@ -95,16 +95,33 @@ button:disabled {
     opacity: 0.7;
 }
 
-/* Spesifikke farger for knapper */
 #btn-record { background-color: #d9534f; }
-#btn-challenge { background-color: #4caf50; } /* Grønn for start */
+#btn-challenge { background-color: #4caf50; } 
 
-#status-display, #note-display, #learning-status {
-    margin-top: 5px;
+/* --- TONELENGDE KONTROLLER --- */
+#duration-controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.duration-btn {
+    background: #fff;
+    border: 2px solid #ccc;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
     font-weight: bold;
-    font-size: 1em;
-    display: inline-block;
-    margin-right: 15px;
+    font-size: 0.9em;
+    user-select: none;
+}
+
+.duration-btn.active {
+    background: #2196f3;
+    color: white;
+    border-color: #1976d2;
+    transform: scale(1.05);
 }
 
 /* --- SHEET MUSIC (VexFlow) --- */
@@ -115,7 +132,7 @@ button:disabled {
 
 #sheet-music-scroll {
     width: 100%;
-    height: 220px; /* Økt høyde for bedre luft */
+    height: 220px;
     background: #fff; 
     border: 1px solid #ccc;
     border-radius: 5px;
@@ -124,13 +141,13 @@ button:disabled {
     padding: 10px;
     box-sizing: border-box;
     display: flex;
-    align-items: center; /* Sentrerer innholdet vertikalt */
+    align-items: center; 
     box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
 }
 
 #vexflow-wrapper {
     display: block;
-    min-width: 100%; /* Sikrer at den tar plassen den får */
+    min-width: 100%; 
 }
 
 /* --- PIANO STYLES --- */
@@ -218,7 +235,7 @@ button:disabled {
     background-color: var(--wrong-color) !important;
 }
 
-/* HINT (Neste note) */
+/* HINT */
 .key.hint {
     background-color: var(--hint-color) !important;
 }
@@ -253,9 +270,17 @@ button:disabled {
     margin-right: 5px;
 }
 
+#status-display, #note-display, #learning-status {
+    margin-top: 5px;
+    font-weight: bold;
+    font-size: 1em;
+    display: inline-block;
+    margin-right: 15px;
+}
+
 @media (max-width: 600px) {
     .piano {
         height: 180px;
     }
 }
-/* Version: #19 */
+/* Version: #22 */
