@@ -1,4 +1,4 @@
-/* Version: #9 */
+/* Version: #12 */
 
 :root {
     --bg-color: #f0f2f5;
@@ -41,15 +41,21 @@ header {
 }
 
 #controls {
-    margin-bottom: 30px;
+    margin-bottom: 20px;
     padding: 20px;
     background: #e9ecef;
     border-radius: 8px;
-    text-align: left; /* Bedre struktur med flere grupper */
+    text-align: left;
 }
 
 .control-group {
     margin-bottom: 10px;
+}
+
+.button-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
 .control-group h3 {
@@ -74,8 +80,7 @@ button {
     border-radius: 5px;
     cursor: pointer;
     transition: background 0.3s;
-    margin-right: 10px;
-    margin-bottom: 10px;
+    margin-bottom: 0; /* Fjernet bottom margin siden vi bruker gap i button-row */
 }
 
 button:hover:not(:disabled) {
@@ -89,15 +94,14 @@ button:disabled {
 }
 
 /* Spesifikke farger for knapper */
-#btn-record { background-color: #d9534f; } /* Rødlig for opptak */
+#btn-record { background-color: #d9534f; }
 #btn-record:hover:not(:disabled) { background-color: #c9302c; }
 
-#btn-play-seq { background-color: #5bc0de; } /* Blålig for play */
+#btn-play-seq { background-color: #5bc0de; }
 #btn-play-seq:hover:not(:disabled) { background-color: #31b0d5; }
 
-#btn-challenge { background-color: #f0ad4e; } /* Oransje for spill */
+#btn-challenge { background-color: #f0ad4e; }
 #btn-challenge:hover:not(:disabled) { background-color: #ec971f; }
-
 
 #status-display, #note-display, #learning-status {
     margin-top: 5px;
@@ -105,6 +109,55 @@ button:disabled {
     font-size: 1em;
     display: inline-block;
     margin-right: 15px;
+}
+
+/* --- SHEET MUSIC (TRANSKRIPSJON) --- */
+#sheet-container {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+#sheet-music-scroll {
+    width: 100%;
+    height: 100px;
+    background: #fff8e1; /* Svak gul noteark-farge */
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    overflow-x: auto; /* Scroll sidelengs */
+    overflow-y: hidden;
+    padding: 10px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+}
+
+#sheet-music-content {
+    display: flex;
+    gap: 5px;
+    /* Innholdet vokser mot høyre */
+}
+
+.note-block {
+    height: 60px;
+    min-width: 40px; /* Minste bredde for korte noter */
+    background-color: #333;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 14px;
+    border: 2px solid #555;
+    position: relative;
+    box-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Svarte tangenter får en annen stil i notearket for tydelighet? 
+   Eller vi bruker samme fargekode. La oss bruke mørk for alt, men tekst viser noten. */
+
+.note-block span {
+    pointer-events: none;
 }
 
 /* --- PIANO STYLES --- */
@@ -224,4 +277,4 @@ button:disabled {
         height: 180px;
     }
 }
-/* Version: #9 */
+/* Version: #12 */
