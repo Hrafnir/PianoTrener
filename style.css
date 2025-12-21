@@ -1,4 +1,4 @@
-/* Version: #30 */
+/* Version: #37 */
 
 :root {
     --bg-color: #f0f2f5;
@@ -14,6 +14,12 @@
     --white-key-width: 40px;
     --black-key-width: 24px;
     --piano-height: 250px;
+
+    /* MIDI Visualizer farger */
+    --vis-bg: #1a1a1a;
+    --neon-purple: #9c27b0;
+    --neon-blue: #2196f3;
+    --neon-green: #4caf50;
 }
 
 body {
@@ -69,6 +75,18 @@ button:disabled { background-color: #cccccc !important; cursor: not-allowed; opa
 .toggle-btn { background-color: #6c757d; width: 60px; }
 .toggle-btn.on { background-color: #4caf50; }
 
+/* MIDI INFO */
+#midi-info {
+    font-size: 0.9em;
+    color: #555;
+    margin-top: 5px;
+    font-weight: bold;
+    background: #fff;
+    padding: 5px 10px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
 /* DURATION CONTROLS */
 #duration-controls { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
 .duration-btn {
@@ -101,11 +119,31 @@ button:disabled { background-color: #cccccc !important; cursor: not-allowed; opa
 #vexflow-wrapper svg .vf-stavenote { cursor: pointer; }
 #vexflow-wrapper svg .vf-stavenote:hover { opacity: 0.7; }
 
+/* MIDI VISUALIZER CANVAS */
+#midi-visualizer-container {
+    width: 100%;
+    height: 300px;
+    background: var(--vis-bg);
+    margin-top: 20px;
+    border: 2px solid #333;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    position: relative;
+    overflow: hidden;
+    /* For å matche pianoets horisontale scroll */
+}
+
+#falling-notes-canvas {
+    display: block;
+    image-rendering: pixelated; /* Bevar skarpe kanter på "staver" */
+}
+
 /* PIANO */
 #piano-container {
     display: flex; justify-content: flex-start; margin-bottom: 30px;
-    overflow-x: auto; padding-bottom: 20px; border: 1px solid #ccc; background: #222;
+    overflow-x: auto; padding-bottom: 20px; border: 2px solid #333; background: #222;
     -webkit-overflow-scrolling: touch; scroll-behavior: smooth;
+    border-radius: 0 0 8px 8px;
 }
 .piano {
     position: relative; height: var(--piano-height); width: fit-content; min-width: 100%;
@@ -170,4 +208,5 @@ button:disabled { background-color: #cccccc !important; cursor: not-allowed; opa
 .menu-btn.delete-btn { background: #ffebee; color: #c62828; }
 .menu-btn.delete-btn:hover { background: #ffcdd2; }
 .menu-close { background: #eee; width: 100%; margin-top: 5px; }
-/* Version: #30 */
+
+/* Version: #37 */
