@@ -1,4 +1,4 @@
-/* Version: #33 */
+/* Version: #34 */
 
 // === KONFIGURASJON ===
 const NOTE_STRINGS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -6,8 +6,6 @@ const MIN_VOLUME_THRESHOLD = 0.02;
 const WHITE_KEY_WIDTH = 40; 
 const BLACK_KEY_WIDTH = 24; 
 const MIC_STABILITY_THRESHOLD = 5; 
-const SCROLL_SMOOTHING = 0.1; 
-const SCROLL_TRIGGER_MARGIN = 150; 
 
 // === GLOBALE VARIABLER ===
 let VF = null; 
@@ -43,9 +41,8 @@ let micPendingNote = null;
 let micStableFrames = 0;
 let lastRegisteredNote = null; 
 
-// Scroll
-let targetScrollPos = 0;
-let pianoContainerWidth = 0;
+// VIEW ZONES
+let currentZone = 2; // Start i Sone 2 (Midten)
 
 // === DOM ELEMENTER ===
 const btnStartMic = document.getElementById('btn-start-mic');
@@ -86,9 +83,10 @@ window.onload = () => {
     }
     VF = Vex.Flow; 
     generatePiano();
-    pianoContainerWidth = pianoContainer.clientWidth;
-    setTimeout(() => scrollToMiddleImmediate(), 100);
-    requestAnimationFrame(updateScrollLoop);
+    
+    // Sett sone 2 som default ved start
+    setTimeout(() => jumpToZone(2), 100);
+
     renderSheetMusic();
     updateButtonStates();
     
@@ -98,27 +96,63 @@ window.onload = () => {
         }
     });
     
-    log("Klar.");
+    log("Klar. Bruk Piltaster for å bytte soner (1-3).");
 };
 
 window.onresize = () => {
-    pianoContainerWidth = pianoContainer.clientWidth;
     renderSheetMusic(); 
 };
+
+// === ZONE NAVIGATION ===
+function jumpToZone(zoneNum) {
+    // Sone 1: Start fra tangent 1 (Index 0) -> MIDI 21
+    // Sone 2: Start fra tangent 22 (Index 21) -> MIDI 42
+    // Sone 3: Start fra tangent 45 (Index 44) -> MIDI 65
+    
+    let targetMidi = 21; // Default Sone 1 (A0)
+    
+    if (zoneNum === 2) targetMidi = 42; // F#2 området
+    else if (zoneNum === 3) targetMidi = 65; // F4 området
+
+    // Finn ID til tangenten
+    const noteName = NOTE_STRINGS[targetMidi % 12];
+    const octave = Math.floor(targetMidi / 12) - 1;
+    const noteId = noteName + octave;
+    
+    const targetKey = document.getElementById(`key-${noteId}`);
+    
+    if (targetKey) {
+        // Scroll containeren slik at denne tangenten er helt til venstre
+        // Vi bruker offsetLeft. 
+        // Vi trenger ikke sentrere den, vi vil at den skal være starten på visningen.
+        pianoContainer.scrollTo({
+            left: targetKey.offsetLeft,
+            behavior: 'smooth'
+        });
+        currentZone = zoneNum;
+        log(`Viser Sone ${currentZone}`);
+    }
+}
 
 // === INPUT LISTENERS ===
 window.addEventListener('keydown', (e) => {
     if(e.target.tagName === 'INPUT') return; 
 
+    // ZONE NAVIGATION (Piltaster)
     if (e.key === 'ArrowLeft') {
         e.preventDefault();
-        targetScrollPos -= 100;
-        if(targetScrollPos < 0) targetScrollPos = 0;
+        if (currentZone > 1) {
+            jumpToZone(currentZone - 1);
+        } else {
+            log("Allerede i Sone 1 (Bass)");
+        }
     } else if (e.key === 'ArrowRight') {
         e.preventDefault();
-        targetScrollPos += 100; 
-        const max = pianoContainer.scrollWidth - pianoContainer.clientWidth;
-        if(targetScrollPos > max) targetScrollPos = max;
+        if (currentZone < 3) {
+            jumpToZone(currentZone + 1);
+        } else {
+            log("Allerede i Sone 3 (Diskant)");
+        }
     }
 
     switch(e.key.toLowerCase()) {
@@ -292,8 +326,6 @@ function renderSheetMusic() {
         }
         stave.setContext(context).draw();
         
-        // --- FIX FOR SPACING (Luft rundt notene) ---
-        // 1. Skyv startpunktet for notene mot høyre (15px padding)
         stave.setNoteStartX(stave.getNoteStartX() + 15);
         
         const notesInMeasure = measures[measureIndex];
@@ -303,7 +335,6 @@ function renderSheetMusic() {
         voice.setStrict(false); 
         voice.addTickables(notesInMeasure);
         
-        // 2. Reduser bredden formateren bruker, så vi ikke treffer høyre kant (-50px)
         new VF.Formatter().joinVoices([voice]).format([voice], measureWidth - 50);
         
         voice.draw(context, stave);
@@ -427,33 +458,6 @@ function generatePiano() {
         pianoInner.appendChild(key);
     }
 }
-function scrollToMiddleImmediate() { const el = document.getElementById('key-C4'); if(el) { const centerPos = el.offsetLeft - (pianoContainerWidth/2) + 20; pianoContainer.scrollLeft = centerPos; targetScrollPos = centerPos; } }
-function updateScrollLoop() {
-    if (currentActiveKey) {
-        const center = currentActiveKey.offsetLeft + (currentActiveKey.classList.contains('black')?12:20);
-        const rel = center - pianoContainer.scrollLeft;
-        if (rel < SCROLL_TRIGGER_MARGIN || rel > pianoContainerWidth - SCROLL_TRIGGER_MARGIN) targetScrollPos = center - (pianoContainerWidth / 2);
-    }
-    const diff = targetScrollPos - pianoContainer.scrollLeft;
-    if (Math.abs(diff) > 1) pianoContainer.scrollLeft += diff * SCROLL_SMOOTHING; else pianoContainer.scrollLeft = targetScrollPos;
-    requestAnimationFrame(updateScrollLoop);
-}
-btnPlaySeq.addEventListener('click', async () => {
-    if (recordedSequence.length === 0) return;
-    isPlayingSequence = true; updateButtonStates(); learningStatus.innerText = "Spiller av..."; clearHints();
-    const msPerBeat = 60000 / bpm;
-    for (let i = 0; i < recordedSequence.length; i++) {
-        const item = recordedSequence[i];
-        let noteBeats = 1; 
-        switch(item.duration) { case 'w': noteBeats = 4; break; case 'h': noteBeats = 2; break; case 'q': noteBeats = 1; break; case '8': noteBeats = 0.5; break; case '16': noteBeats = 0.25; break; }
-        if (item.dotted) noteBeats *= 1.5;
-        const durationMs = noteBeats * msPerBeat;
-        if (metronomeEnabled) playClick();
-        if (item.type !== 'r') playDemoTone(item.note, durationMs);
-        await new Promise(r => setTimeout(r, durationMs));
-    }
-    isPlayingSequence = false; learningStatus.innerText = "Ferdig spilt."; updateButtonStates();
-});
 function playClick() {
     const ctx = ensureAudioContext(); const osc = ctx.createOscillator(); const gain = ctx.createGain();
     osc.type = 'square'; osc.frequency.setValueAtTime(1000, ctx.currentTime);
@@ -472,6 +476,22 @@ function playDemoTone(noteId, durationMs) {
     const key = document.getElementById(`key-${noteId}`); if (key) key.classList.add('active');
     setTimeout(() => { if (key) key.classList.remove('active'); }, playDur);
 }
+btnPlaySeq.addEventListener('click', async () => {
+    if (recordedSequence.length === 0) return;
+    isPlayingSequence = true; updateButtonStates(); learningStatus.innerText = "Spiller av..."; clearHints();
+    const msPerBeat = 60000 / bpm;
+    for (let i = 0; i < recordedSequence.length; i++) {
+        const item = recordedSequence[i];
+        let noteBeats = 1; 
+        switch(item.duration) { case 'w': noteBeats = 4; break; case 'h': noteBeats = 2; break; case 'q': noteBeats = 1; break; case '8': noteBeats = 0.5; break; case '16': noteBeats = 0.25; break; }
+        if (item.dotted) noteBeats *= 1.5;
+        const durationMs = noteBeats * msPerBeat;
+        if (metronomeEnabled) playClick();
+        if (item.type !== 'r') playDemoTone(item.note, durationMs);
+        await new Promise(r => setTimeout(r, durationMs));
+    }
+    isPlayingSequence = false; learningStatus.innerText = "Ferdig spilt."; updateButtonStates();
+});
 function playTone(noteId, freq) {
     if(activeOscillators.has(noteId)) return;
     const ctx = ensureAudioContext(); const osc = ctx.createOscillator(); const gain = ctx.createGain();
@@ -517,4 +537,4 @@ function autoCorrelate(buf, sr) { let rms=0; for(let i=0;i<buf.length;i++) rms+=
 function noteFromPitch(f) { return Math.round(12*(Math.log(f/440)/Math.log(2)))+69; }
 function log(message) { const time = new Date().toLocaleTimeString(); const entry = document.createElement('div'); entry.className = 'log-entry'; entry.innerHTML = `<span class="log-time">[${time}]</span> ${message}`; logContainer.appendChild(entry); logContainer.scrollTop = logContainer.scrollHeight; }
 
-/* Version: #33 */
+/* Version: #34 */
