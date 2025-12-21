@@ -1,11 +1,14 @@
-<!-- Version: #29 -->
+<!-- Version: #36 -->
 <!DOCTYPE html>
 <html lang="no">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Piano Lærer - Pro</title>
+    <!-- Biblioteker -->
     <script src="https://unpkg.com/vexflow@3.0.9/releases/vexflow-min.js"></script>
+    <script src="https://unpkg.com/tone"></script>
+    <script src="https://unpkg.com/@tonejs/midi"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -17,12 +20,27 @@
         </header>
 
         <section id="controls">
-            <!-- Mikrofon -->
+            <!-- Mikrofon-seksjon -->
             <div class="control-group">
                 <h3>Fri Modus / Mikrofon</h3>
                 <button id="btn-start-mic">Start Mikrofon</button>
                 <div id="status-display">Status: Klar...</div>
                 <div id="note-display">Note: --</div>
+            </div>
+
+            <hr class="divider">
+
+            <!-- MIDI Øvelsesmodus -->
+            <div class="control-group" id="midi-exercise-section">
+                <h3>🎓 MIDI Øvelsesmodus (Falling Notes)</h3>
+                <div class="button-row">
+                    <input type="file" id="midi-upload" accept=".mid,.midi" style="display: none;">
+                    <button id="btn-upload-midi" onclick="document.getElementById('midi-upload').click()" style="background-color: #673ab7;">📁 Last opp MIDI</button>
+                    <button id="btn-start-midi" disabled style="background-color: #4caf50;">▶️ Start Sang</button>
+                    <button id="btn-pause-midi" disabled style="background-color: #ff9800;">⏸ Pause</button>
+                    <button id="btn-stop-midi" disabled style="background-color: #f44336;">⏹ Stopp</button>
+                </div>
+                <div id="midi-info">Ingen fil valgt</div>
             </div>
 
             <hr class="divider">
@@ -61,7 +79,6 @@
                     <div class="duration-btn" data-dur="8" id="dur-8">8 Åtte.</div>
                     <div class="duration-btn" data-dur="16" id="dur-9">16-del</div>
                     
-                    <!-- Nye Knapper -->
                     <div class="duration-btn dot-btn" id="btn-toggle-dot">. Punktert</div>
                     <div class="duration-btn rest-btn" id="btn-add-rest">⏸ Pause</div>
                     <div class="duration-btn undo-btn" id="btn-undo">↩ Angre</div>
@@ -89,7 +106,7 @@
             </div>
         </section>
 
-        <!-- Noteark -->
+        <!-- Noteark-seksjon -->
         <section id="sheet-container">
             <h3>Noteark (Klikk på en note for å endre den):</h3>
             <div id="sheet-music-scroll">
@@ -97,17 +114,24 @@
             </div>
         </section>
 
+        <!-- MIDI Visualizer (Canvas for fallende noter) -->
+        <section id="midi-visualizer-container">
+            <canvas id="falling-notes-canvas"></canvas>
+        </section>
+
+        <!-- Piano-seksjon -->
         <section id="piano-container">
             <div class="piano" id="piano"></div>
         </section>
 
+        <!-- Logg-seksjon -->
         <section id="logging-area">
             <h3>Logg:</h3>
             <div id="app-log"></div>
         </section>
     </div>
 
-    <!-- CONTEXT MENU (Skjult dropdown) -->
+    <!-- CONTEXT MENU -->
     <div id="note-context-menu" class="context-menu" style="display: none;">
         <h4>Rediger Note</h4>
         <div class="menu-section">
@@ -127,4 +151,4 @@
     <script src="script.js"></script>
 </body>
 </html>
-<!-- Version: #29 -->
+<!-- Version: #36 -->
